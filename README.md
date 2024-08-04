@@ -11,5 +11,5 @@ RetrievalLLMSynthesis 旨在通过整合先进的语言模型和检索技术，�
 ### 克隆仓库
 
 ```bash
-git clone https://github.com/yourusername/RetrievalLLMSynthesis.git
+git clone https://github.com/Kayce001/RetrievalLLMSynthesis.git
 cd RetrievalLLMSynthesis
