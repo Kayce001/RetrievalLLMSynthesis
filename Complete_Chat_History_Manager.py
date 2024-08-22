@@ -1,3 +1,4 @@
+#添加了删除历史对话功能
 import os
 import numpy as np
 import sqlite3
