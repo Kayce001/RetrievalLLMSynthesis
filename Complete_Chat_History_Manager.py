@@ -222,8 +222,8 @@ def rag_system(user_input, chat_history):
         if conn:
             conn.close()
 
-def user(user_message, history):
-    return "", history + [[user_message, None]]
+#def user(user_message, history):
+#    return "", history + [[user_message, None]]
 
 def bot(history):
     global is_responding, conversation_list
