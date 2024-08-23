@@ -335,11 +335,11 @@ with gr.Blocks() as demo:
     msg.change(check_input, inputs=msg, outputs=submit_btn)
 
     # 文本框提交事件
-    msg.submit(
+   """ msg.submit(
         process_input, [msg, chatbot], [chatbot, submit_btn, msg], queue=False
     ).then(
         bot, chatbot, [chatbot, submit_btn]
-    )
+    ) """
 
     # 提交按钮点击事件
     submit_btn.click(
