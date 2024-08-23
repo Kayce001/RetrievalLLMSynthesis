@@ -334,12 +334,6 @@ with gr.Blocks() as demo:
     # 动态控制提交按钮状态，每次输入内容变化时检查输入并更新按钮状态
     msg.change(check_input, inputs=msg, outputs=submit_btn)
 
-    # 文本框提交事件
-   """ msg.submit(
-        process_input, [msg, chatbot], [chatbot, submit_btn, msg], queue=False
-    ).then(
-        bot, chatbot, [chatbot, submit_btn]
-    ) """
 
     # 提交按钮点击事件
     submit_btn.click(
