@@ -1,0 +1,7 @@
+requests==2.31.0
+numpy==1.24.2
+cryptography==41.0.3
+python-dotenv==1.0.0
+torch==2.0.1
+faiss-gpu==1.7.2  # 使用 GPU 版本，如果在 CPU 上运行则改为 faiss-cpu==1.7.2
+gradio==3.28.1
