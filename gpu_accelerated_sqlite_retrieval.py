@@ -1,3 +1,4 @@
+#将文本变为向量并存入faiss中
 import os
 import requests
 import numpy as np
