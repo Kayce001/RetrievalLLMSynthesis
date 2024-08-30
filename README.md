@@ -4,7 +4,6 @@
 
 ## 项目概览
 
-RetrievalLLMSynthesis 旨在通过整合先进的语言模型和检索技术，提高文本内容生成的质量和效率。
 Complete_Chat_History_Manager.py这个文件实现了一个基于 Gradio 界面的聊天系统，结合了大型语言模型（LLM）与检索增强生成（RAG）技术，用于高效地生成基于查询的相关答案，并支持对话的创建、保存、加载和删除功能。
 gpu_accelerated_sqlite_retrieval.py这个文件实现了一个基于嵌入向量和 FAISS 检索的系统，用于处理、存储、查询和管理文本数据的嵌入表示，并提供了查询和删除操作的命令行界面。
 
