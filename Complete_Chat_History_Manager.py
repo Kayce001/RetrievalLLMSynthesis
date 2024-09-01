@@ -1,4 +1,3 @@
-#添加了删除历史对话功能
 import os
 import numpy as np
 import sqlite3
@@ -223,7 +222,7 @@ def rag_system(user_input, chat_history):
             conn.close()
 
 #def user(user_message, history):
-#    return "", history + [[user_message, None]]
+ #   return "", history + [[user_message, None]]
 
 def bot(history):
     global is_responding, conversation_list
@@ -317,7 +316,10 @@ def check_input(input_text):
     # 直接根据输入框的原始内容更新按钮的状态
     return gr.update(interactive=bool(input_text.strip()))
 
-# Gradio 界面设计
+def on_app_load():
+    # 每次页面加载时创建新对话
+    return create_new_conversation()
+
 with gr.Blocks() as demo:
     with gr.Row():
         with gr.Column(scale=1):
@@ -328,12 +330,11 @@ with gr.Blocks() as demo:
         with gr.Column(scale=4):
             chatbot = gr.Chatbot(height=600)  # 直接在初始化时设置高度
             with gr.Row():
-                msg = gr.Textbox(label="输入消息", lines=3, max_lines=3)  # 固定输入框高度，并添加滚动条
-                submit_btn = gr.Button("提交", size="sm", interactive=False)  # 初始化为不可点击
+                msg = gr.Textbox(label="输入消息", lines=3, max_lines=3, scale=8)  # 增加输入框的比例
+                submit_btn = gr.Button("提交", size="sm", scale=1)  # 调整按钮的比例为1
 
     # 动态控制提交按钮状态，每次输入内容变化时检查输入并更新按钮状态
     msg.change(check_input, inputs=msg, outputs=submit_btn)
-
 
     # 提交按钮点击事件
     submit_btn.click(
@@ -351,5 +352,8 @@ with gr.Blocks() as demo:
     # 删除对话按钮点击事件
     delete_btn.click(delete_conversation, conversation_list, [conversation_list, chatbot])
 
+    # 页面加载时触发新对话的创建
+    demo.load(on_app_load, None, [chatbot, conversation_list, submit_btn, msg])
+
 if __name__ == "__main__":
-    demo.launch()
+    demo.launch(server_name="0.0.0.0", server_port=7861, root_path="/app2")
