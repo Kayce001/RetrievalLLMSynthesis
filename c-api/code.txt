@@ -1,0 +1,223 @@
+代码对象
+********
+
+代码对象是 CPython 实现的低层级细节。 每个代表一块尚未绑定到函数中的可
+执行代码。
+
+type PyCodeObject
+
+   用于描述代码对象的对象的 C 结构。 此类型字段可随时更改。
+
+PyTypeObject PyCode_Type
+
+   这一个代表 Python 代码对象 的 "PyTypeObject" 实例。
+
+int PyCode_Check(PyObject *co)
+
+   如果 *co* 是一个 代码对象 则返回真值。 此函数总是会成功执行。
+
+Py_ssize_t PyCode_GetNumFree(PyCodeObject *co)
+
+   返回代码对象中的自由变量数。
+
+int PyCode_GetFirstFree(PyCodeObject *co)
+
+   返回代码对象中第一个自由变量的位置。
+
+PyCodeObject *PyUnstable_Code_New(int argcount, int kwonlyargcount, int nlocals, int stacksize, int flags, PyObject *code, PyObject *consts, PyObject *names, PyObject *varnames, PyObject *freevars, PyObject *cellvars, PyObject *filename, PyObject *name, PyObject *qualname, int firstlineno, PyObject *linetable, PyObject *exceptiontable)
+
+   *这是 不稳定 API。它可在次发布版中不经警告地改变。*
+
+   返回一个新的代码对象。 如果你需要一个用空代码对象来创建帧，请改用
+   "PyCode_NewEmpty()"。
+
+   由于字节码的定义经常变化，可以直接调用 "PyUnstable_Code_New()" 来绑
+   定某个确定的 Python 版本。
+
+   此函数的许多参数以复杂的方式相互依赖，这意味着参数值的细微改变可能
+   导致不正确的执行或 VM 崩溃。 使用此函数需要极度小心。
+
+   在 3.11 版本发生变更: 添加了 "qualname" 和 "exceptiontable" 形参。
+
+   在 3.12 版本发生变更: 由 "PyCode_New" 更名而来，是 不稳定 C API 的
+   一部分。 旧名称已被弃用，但在签名再次更改之前仍然可用。
+
+PyCodeObject *PyUnstable_Code_NewWithPosOnlyArgs(int argcount, int posonlyargcount, int kwonlyargcount, int nlocals, int stacksize, int flags, PyObject *code, PyObject *consts, PyObject *names, PyObject *varnames, PyObject *freevars, PyObject *cellvars, PyObject *filename, PyObject *name, PyObject *qualname, int firstlineno, PyObject *linetable, PyObject *exceptiontable)
+
+   *这是 不稳定 API。它可在次发布版中不经警告地改变。*
+
+   与 "PyUnstable_Code_New()" 类似，但额外增加了一个针对仅限位置参数的
+   "posonlyargcount"。 适用于 "PyUnstable_Code_New" 的适用事项同样适用
+   于这个函数。
+
+   Added in version 3.8: 作为 "PyCode_NewWithPosOnlyArgs"
+
+   在 3.11 版本发生变更: 增加了 "qualname" 和  "exceptiontable" 形参。
+
+   在 3.12 版本发生变更: 重命名为 "PyUnstable_Code_NewWithPosOnlyArgs"
+   。 旧名称已被弃用，但在签名再次更改之前将保持可用。
+
+PyCodeObject *PyCode_NewEmpty(const char *filename, const char *funcname, int firstlineno)
+    *返回值：新的引用。*
+
+   返回一个具有指定用户名、函数名和首行行号的空代码对象。 结果代码对象
+   如果被执行则将引发一个 "Exception"。
+
+int PyCode_Addr2Line(PyCodeObject *co, int byte_offset)
+
+   返回在 "byte_offset" 位置或之前以及之后发生的指令的行号。 如果你只
+   需要一个帧的行号，请改用 "PyFrame_GetLineNumber()"。
+
+   要高效地对代码对象中的行号进行迭代，请使用 在 PEP 626 中描述的 API
+   。
+
+int PyCode_Addr2Location(PyObject *co, int byte_offset, int *start_line, int *start_column, int *end_line, int *end_column)
+
+   将传入的 "int" 指针设为 "byte_offset" 处的指令的源代码行编号和列编
+   号。 当没有任何特定元素的信息时则将值设为 "0"。
+
+   如果函数执行成功则返回 "1" 否则返回 0。
+
+   Added in version 3.11.
+
+PyObject *PyCode_GetCode(PyCodeObject *co)
+
+   等价于 Python 代码 "getattr(co, 'co_code')"。 返回一个指向表示代码
+   对象中的字节码的 "PyBytesObject" 的强引用。 当出错时，将返回 "NULL"
+   并引发一个异常。
+
+   这个 "PyBytesObject" 可以由解释器按需创建并且不必代表 CPython 所实
+   际执行的字节码。 此函数的主要用途是调试器和性能分析工具。
+
+   Added in version 3.11.
+
+PyObject *PyCode_GetVarnames(PyCodeObject *co)
+
+   等价于 Python 代码 "getattr(co, 'co_varnames')"。 返回一个指向包含
+   局部变量名称的 "PyTupleObject" 的新引用。 当出错时，将返回 "NULL"
+   并引发一个异常。
+
+   Added in version 3.11.
+
+PyObject *PyCode_GetCellvars(PyCodeObject *co)
+
+   等价于 Python 代码 "getattr(co, 'co_cellvars')"。 返回一个包含被嵌
+   套的函数所引用的局部变量名称的 "PyTupleObject" 的新引用。 当出错时
+   ，将返回 "NULL" 并引发一个异常。
+
+   Added in version 3.11.
+
+PyObject *PyCode_GetFreevars(PyCodeObject *co)
+
+   等价于 Python 代码 "getattr(co, 'co_freevars')"。 返回一个指向包含
+   自由变量名称的 "PyTupleObject" 的新引用。 当出错时，将返回 "NULL"
+   并引发一个异常。
+
+   Added in version 3.11.
+
+int PyCode_AddWatcher(PyCode_WatchCallback callback)
+
+   注册 *callback* 作为当前解释器的代码对象监视器。 返回一个可被传给
+   "PyCode_ClearWatcher()" 的 ID。 如果出现错误（例如没有足够的可用监
+   视器 ID），则返回 "-1" 并设置一个异常。
+
+   Added in version 3.12.
+
+int PyCode_ClearWatcher(int watcher_id)
+
+   清除之前从 "PyCode_AddWatcher()" 返回的当前解释器中由 *watcher_id*
+   所标识的监视器。 成功时返回 "0"，或者出错时（例如当给定的
+   *watcher_id* 未被注册）返回 "-1" 并设置异常。
+
+   Added in version 3.12.
+
+type PyCodeEvent
+
+   由可能的代码对象监视器事件组成的枚举: - "PY_CODE_EVENT_CREATE" -
+   "PY_CODE_EVENT_DESTROY"
+
+   Added in version 3.12.
+
+typedef int (*PyCode_WatchCallback)(PyCodeEvent event, PyCodeObject *co)
+
+   代码对象监视器回调函数的类型。
+
+   如果 *event* 为 "PY_CODE_EVENT_CREATE" ，则回调会在 *co* 完全初始化
+   后被发起调用。 否则，回调会在 *co* 执行销毁之前被发起调用，这样就可
+   以检查 *co* 之前的状态。
+
+   如果 *event* 为 "PY_CODE_EVENT_DESTROY"，则在回调中接受一个即将被销
+   毁的代码对象的引用将使其重生，并阻止其在此时被释放。 当重生的对象以
+   后再被销毁时，任何在当时已激活的监视器回调将再次被调用。
+
+   本 API 的用户不应依赖内部运行时的实现细节。 这类细节可能包括但不限
+   于创建和销毁代码对象的确切顺序和时间。 虽然这些细节的变化可能会导致
+   监视器可观察到的差异（包括回调是否被发起调用），但不会改变正在执行
+   的 Python 代码的语义。
+
+   如果该回调设置了一个异常，则它必须返回 "-1"；此异常将作为不可引发的
+   异常使用 "PyErr_WriteUnraisable()" 打印出来。 在其他情况下它应当返
+   回 "0"。
+
+   在进入回调时可能已经设置了尚未处理的异常。 在此情况下，回调应当返回
+   "0" 并仍然设置同样的异常。 这意味着该回调可能不会调用任何其他可设置
+   异常的 API 除非它先保存并清空异常状态，并在返回之前恢复它。
+
+   Added in version 3.12.
+
+
+附加信息
+********
+
+为了支持对帧求值的低层级扩展，如外部即时编译器等，可以在代码对象上附加
+任意的额外数据。
+
+这些函数是不稳定 C API 层的一部分：该功能是 CPython 的实现细节，此 API
+可能随时改变而不发出弃用警告。
+
+Py_ssize_t PyUnstable_Eval_RequestCodeExtraIndex(freefunc free)
+
+   *这是 不稳定 API。它可在次发布版中不经警告地改变。*
+
+   返回一个新的不透明索引值用于向代码对象添加数据。
+
+   通常情况下（对于每个解释器）你只需调用该函数一次然后将调用结果与
+   "PyCode_GetExtra" 和 "PyCode_SetExtra" 一起使用以操作单个代码对象上
+   的数据。
+
+   如果 *free* 没有不为 "NULL": 当代码对象被释放时，*free* 将在存储于
+   新索引下的非 "NULL" 数据上被调用。 当存储 "PyObject" 时使用
+   "Py_DecRef()"。
+
+   Added in version 3.6: 作为 "_PyEval_RequestCodeExtraIndex"
+
+   在 3.12 版本发生变更: 重命名为
+   "PyUnstable_Eval_RequestCodeExtraIndex"。 旧的私有名称已被弃用，但
+   在 API 更改之前仍将可用。
+
+int PyUnstable_Code_GetExtra(PyObject *code, Py_ssize_t index, void **extra)
+
+   *这是 不稳定 API。它可在次发布版中不经警告地改变。*
+
+   将 *extra* 设为存储在给定索引下的额外数据。 成功时将返回 0。 失败时
+   将设置一个异常并返回 -1。
+
+   如果未在索引下设置数据，则将 *extra* 设为 "NULL" 并返回 0 而不设置
+   异常。
+
+   Added in version 3.6: 作为 "_PyCode_GetExtra"
+
+   在 3.12 版本发生变更: 重命名为 "PyUnstable_Code_GetExtra"。 旧的私
+   有名称已被弃用，但在 API 更改之前仍将可用。
+
+int PyUnstable_Code_SetExtra(PyObject *code, Py_ssize_t index, void *extra)
+
+   *这是 不稳定 API。它可在次发布版中不经警告地改变。*
+
+   将存储在给定索引下的额外数据设为 *extra*。 成功时将返回 0。 失败时
+   将设置一个异常并返回 -1。
+
+   Added in version 3.6: 作为 "_PyCode_SetExtra"
+
+   在 3.12 版本发生变更: 重命名为 "PyUnstable_Code_SetExtra"。 旧的私
+   有名称已被弃用，但在 API 更改之前仍将可用。

@@ -1,0 +1,298 @@
+整数型对象
+**********
+
+所有整数都实现为长度任意的长整数对象。
+
+在出错时，大多数 "PyLong_As*" API 都会返回  "(return type)-1"，这与数
+字无法区分开。请采用 "PyErr_Occurred()" 来加以区分。
+
+type PyLongObject
+    * 属于 受限 API （作为不透明的结构体）.*
+
+   表示 Python 整数对象的 "PyObject" 子类型。
+
+PyTypeObject PyLong_Type
+    * 属于 稳定 ABI.*
+
+   这个 "PyTypeObject" 的实例表示 Python 的整数类型。与 Python 语言中
+   的 "int" 相同。
+
+int PyLong_Check(PyObject *p)
+
+   如果参数是 "PyLongObject" 或 "PyLongObject" 的子类型，则返回 True。
+   该函数一定能够执行成功。
+
+int PyLong_CheckExact(PyObject *p)
+
+   如果其参数属于 "PyLongObject"，但不是 "PyLongObject" 的子类型则返回
+   真值。 此函数总是会成功执行。
+
+PyObject *PyLong_FromLong(long v)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   由 *v* 返回一个新的 "PyLongObject" 对象，失败时返回 "NULL" 。
+
+   当前的实现维护着一个整数对象数组，包含 "-5" 和 "256" 之间的所有整数
+   对象。 若创建一个位于该区间的 int 时，实际得到的将是对已有对象的引
+   用。
+
+PyObject *PyLong_FromUnsignedLong(unsigned long v)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   基于 C unsigned long 返回一个新的 "PyLongObject" 对象，失败时返回
+   "NULL"。
+
+PyObject *PyLong_FromSsize_t(Py_ssize_t v)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   由 C "Py_ssize_t"  返回一个新的 "PyLongObject" 对象，失败时返回
+   "NULL" 。
+
+PyObject *PyLong_FromSize_t(size_t v)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   由 C "size_t" 返回一个新的 "PyLongObject" 对象，失败则返回 "NULL"
+   。
+
+PyObject *PyLong_FromLongLong(long long v)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   基于 C long long 返回一个新的 "PyLongObject"，失败时返回 "NULL"。
+
+PyObject *PyLong_FromUnsignedLongLong(unsigned long long v)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   基于 C unsigned long long 返回一个新的 "PyLongObject" 对象，失败时
+   返回 "NULL"。
+
+PyObject *PyLong_FromDouble(double v)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   由 *v* 的整数部分返回一个新的 "PyLongObject" 对象，失败则返回
+   "NULL" 。
+
+PyObject *PyLong_FromString(const char *str, char **pend, int base)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   根据 *str* 字符串值返回一个新的 "PyLongObject"，它将根据 *base* 指
+   定的基数来解读，或是在失败时返回 "NULL"。 如果 *pend* 不为 "NULL"，
+   则在成功时 **pend* 将指向 *str* 中末尾而在出错时将指向第一个无法处
+   理的字符。 如果 *base* 为 "0"，则 *str* 将使用 整数字面值 定义来解
+   读；在此情况下，非零十进制数以零开头将会引发 "ValueError"。 如果
+   *base* 不为 "0"，则必须在 "2" 和 "36"，包括这两个值。 开头和末尾的
+   空格以及基数标示符之后和数码之间的单下划线将被忽略。 如果没有数码或
+   *str* 中数码和末尾空格之后不以 NULL 结束，则将引发 "ValueError"。
+
+   参见:
+
+     Python 方法 "int.to_bytes()" 和 "int.from_bytes()" 用于
+     "PyLongObject" 到/从字节数组之间以 "256" 为基数进行转换。 你可以
+     使用 "PyObject_CallMethod()" 从 C 调用它们。
+
+PyObject *PyLong_FromUnicodeObject(PyObject *u, int base)
+    *返回值：新的引用。*
+
+   将字符串 *u* 中的 Unicode 数字序列转换为 Python 整数值。
+
+   Added in version 3.3.
+
+PyObject *PyLong_FromVoidPtr(void *p)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   从指针 *p* 创建一个 Python 整数。可以使用 "PyLong_AsVoidPtr()" 返回
+   的指针值。
+
+long PyLong_AsLong(PyObject *obj)
+    * 属于 稳定 ABI.*
+
+   返回 *obj* 的 C long 表示形式。 如果 *obj* 不是 "PyLongObject" 的实
+   例，则会先调用其 "__index__()" 方法（如果存在）将其转换为
+   "PyLongObject"。
+
+   如果 *obj* 的值超出了 long 的取值范围则会引发 "OverflowError"。
+
+   出错则返回 "-1" 。请用 "PyErr_Occurred()" 找出具体问题。
+
+   在 3.8 版本发生变更: 如果可能将使用 "__index__()"。
+
+   在 3.10 版本发生变更: 此函数将不再使用 "__int__()"。
+
+long PyLong_AsLongAndOverflow(PyObject *obj, int *overflow)
+    * 属于 稳定 ABI.*
+
+   返回 *obj* 的 C long 表示形式。 如果 *obj* 不是 "PyLongObject" 的实
+   例，则会先调用其 "__index__()" 方法（如果存在）将其转换为
+   "PyLongObject"。
+
+   如果 *obj* 的值大于 "LONG_MAX" 或小于 "LONG_MIN"，则会把
+   **overflow* 分别置为 "1" 或 "-1"，并返回 "-1"；否则，将 **overflow*
+   置为 "0"。 如果发生其他异常则按常规把 **overflow* 置为 "0" 并返回
+   "-1"。
+
+   出错则返回 "-1" 。请用 "PyErr_Occurred()" 找出具体问题。
+
+   在 3.8 版本发生变更: 如果可能将使用 "__index__()"。
+
+   在 3.10 版本发生变更: 此函数将不再使用 "__int__()"。
+
+long long PyLong_AsLongLong(PyObject *obj)
+    * 属于 稳定 ABI.*
+
+   返回 *obj* 的 C long long 表示形式。 如果 *obj* 不是 "PyLongObject"
+   的实例，则会先调用其 "__index__()" 方法（如果存在）将其转换为
+   "PyLongObject"。
+
+   如果 *obj* 值超出 long long 的取值范围则会引发 "OverflowError"。
+
+   出错则返回 "-1" 。请用 "PyErr_Occurred()" 找出具体问题。
+
+   在 3.8 版本发生变更: 如果可能将使用 "__index__()"。
+
+   在 3.10 版本发生变更: 此函数将不再使用 "__int__()"。
+
+long long PyLong_AsLongLongAndOverflow(PyObject *obj, int *overflow)
+    * 属于 稳定 ABI.*
+
+   返回 *obj* 的 C long long 表示形式。 如果 *obj* 不是 "PyLongObject"
+   的实例，则会先调用其 "__index__()" 方法（如果存在）将其转换为
+   "PyLongObject"。
+
+   如果 *obj* 的值大于 "LLONG_MAX" 或小于 "LLONG_MIN"，则会把
+   **overflow* 分别置为 "1" 或 "-1"，并返回 "-1"；否则，将 **overflow*
+   置为 "0"。 如果发生其他异常则按常规把 **overflow* 置为 "0" 并返回
+   "-1"。
+
+   出错则返回 "-1" 。请用 "PyErr_Occurred()" 找出具体问题。
+
+   Added in version 3.2.
+
+   在 3.8 版本发生变更: 如果可能将使用 "__index__()"。
+
+   在 3.10 版本发生变更: 此函数将不再使用 "__int__()"。
+
+Py_ssize_t PyLong_AsSsize_t(PyObject *pylong)
+    * 属于 稳定 ABI.*
+
+   返回 *pylong* 的 C 语言 "Py_ssize_t" 形式。*pylong* 必须是
+   "PyLongObject" 的实例。
+
+   如果 *pylong* 的值超出了 "Py_ssize_t" 的取值范围则会引发
+   "OverflowError"。
+
+   出错则返回 "-1" 。请用 "PyErr_Occurred()" 找出具体问题。
+
+unsigned long PyLong_AsUnsignedLong(PyObject *pylong)
+    * 属于 稳定 ABI.*
+
+   返回 *pylong* 的 C unsigned long 表示形式。 *pylong* 必须是
+   "PyLongObject" 的实例。
+
+   如果 *pylong* 的值超出了 unsigned long 的取值范围则会引发
+   "OverflowError"。
+
+   出错时返回 "(unsigned long)-1" ，请利用 "PyErr_Occurred()" 辨别具体
+   问题。
+
+size_t PyLong_AsSize_t(PyObject *pylong)
+    * 属于 稳定 ABI.*
+
+   返回 *pylong* 的 C 语言 "size_t" 形式。*pylong* 必须是
+   "PyLongObject" 的实例。
+
+   如果 *pylong* 的值超出了 "size_t" 的取值范围则会引发
+   "OverflowError"。
+
+   出错时返回  "(size_t)-1" ，请利用 "PyErr_Occurred()" 辨别具体问题。
+
+unsigned long long PyLong_AsUnsignedLongLong(PyObject *pylong)
+    * 属于 稳定 ABI.*
+
+   返回 *pylong* 的 C unsigned long long 表示形式。 *pylong* 必须是
+   "PyLongObject" 的实例。
+
+   如果 *pylong* 的值超出 unsigned long long 的取值范围则会引发
+   "OverflowError"。
+
+   出错时返回 "(unsigned long long)-1"，请利用 "PyErr_Occurred()" 辨别
+   具体问题。
+
+   在 3.1 版本发生变更: 现在 *pylong* 为负值会触发  "OverflowError"，
+   而不是 "TypeError"。
+
+unsigned long PyLong_AsUnsignedLongMask(PyObject *obj)
+    * 属于 稳定 ABI.*
+
+   返回 *obj* 的 C unsigned long 表示形式。 如果 *obj* 不是
+   "PyLongObject" 的实例，则会先调用其 "__index__()" 方法（如果存在）
+   将其转换为 "PyLongObject"。
+
+   如果 *obj* 的值超出了 unsigned long 的取值范围，则返回该值对
+   "ULONG_MAX + 1" 求模的余数。
+
+   出错时返回 "(unsigned long)-1"，请利用 "PyErr_Occurred()" 辨别具体
+   问题。
+
+   在 3.8 版本发生变更: 如果可能将使用 "__index__()"。
+
+   在 3.10 版本发生变更: 此函数将不再使用 "__int__()"。
+
+unsigned long long PyLong_AsUnsignedLongLongMask(PyObject *obj)
+    * 属于 稳定 ABI.*
+
+   返回 *obj* 的 C unsigned long long 表示形式。 如果 *obj* 不是
+   "PyLongObject" 的实例，则会先调用其 "__index__()" 方法（如果存在）
+   将其转换为 "PyLongObject"。
+
+   如果 *obj* 的值超出了 unsigned long long 的取值范围，则返回该值对
+   "ULLONG_MAX + 1" 求模的余数。
+
+   出错时返回 "(unsigned long long)-1"，请利用 "PyErr_Occurred()" 辨别
+   具体问题。
+
+   在 3.8 版本发生变更: 如果可能将使用 "__index__()"。
+
+   在 3.10 版本发生变更: 此函数将不再使用 "__int__()"。
+
+double PyLong_AsDouble(PyObject *pylong)
+    * 属于 稳定 ABI.*
+
+   返回 *pylong* 的 C double 表示形式。 *pylong* 必须是 "PyLongObject"
+   的实例。
+
+   如果 *pylong* 的值超出了 double 的取值范围则会引发 "OverflowError"
+   。
+
+   出错时返回  "-1.0" ，请利用 "PyErr_Occurred()" 辨别具体问题。
+
+void *PyLong_AsVoidPtr(PyObject *pylong)
+    * 属于 稳定 ABI.*
+
+   将一个 Python 整数 *pylong* 转换为 C void 指针。 如果 *pylong* 无法
+   被转换，则将引发 "OverflowError"。 这只是为了保证将通过
+   "PyLong_FromVoidPtr()" 创建的值产生一个可用的 void 指针。
+
+   出错时返回  "NULL"，请利用 "PyErr_Occurred()" 辨别具体问题。
+
+int PyUnstable_Long_IsCompact(const PyLongObject *op)
+
+   *这是 不稳定 API。它可在次发布版中不经警告地改变。*
+
+   如果 *op* 为紧凑形式则返回 1，否则返回 0。
+
+   This function makes it possible for performance-critical code to
+   implement a “fast path” for small integers. For compact values use
+   "PyUnstable_Long_CompactValue()"; for others fall back to a
+   "PyLong_As*" function or "calling" "int.to_bytes()".
+
+   此项加速对于大多数用户来说是可以忽略的。
+
+   具体有哪些值会被视为紧凑形式属于实现细节并可能发生改变。
+
+Py_ssize_t PyUnstable_Long_CompactValue(const PyLongObject *op)
+
+   *这是 不稳定 API。它可在次发布版中不经警告地改变。*
+
+   如果 *op* 为紧凑形式，如 "PyUnstable_Long_IsCompact()" 所确定的，则
+   返回它的值。
+
+   在其他情况下，返回值是未定义的。

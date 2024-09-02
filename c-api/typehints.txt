@@ -1,0 +1,40 @@
+类型注解对象
+************
+
+提供几种用于类型提示的内置类型。 目前存在两种类型 -- GenericAlias 和
+Union。 只有 "GenericAlias" 会向 C 开放。
+
+PyObject *Py_GenericAlias(PyObject *origin, PyObject *args)
+    * 属于 稳定 ABI 自 3.9 版起.*
+
+   创建一个 GenericAlias 对象。 相当于调用 Python 类
+   "types.GenericAlias"。 参数 *origin* 和 *args* 分别设置
+   "GenericAlias" 的 "__origin__" 和 "__args__" 属性。 *origin* 应该是
+   一个 PyTypeObject*，而 *args* 可以是一个 PyTupleObject* 或者任意
+   "PyObject*"。 如果传递的 *args* 不是一个元组，则会自动构造一个单元
+   组并将 "__args__" 设置为 "(args,)"。 对参数进行了最小限度的检查，因
+   此即使 *origin* 不是类型函数也会成功。 "GenericAlias" 的
+   "__parameters__" 属性是从 "__args__" 懒加载的。 如果失败，则会引发
+   一个异常并返回 "NULL"。
+
+   下面是一个如何创建一个扩展类型泛型的例子:
+
+      ...
+      static PyMethodDef my_obj_methods[] = {
+          // Other methods.
+          ...
+          {"__class_getitem__", Py_GenericAlias, METH_O|METH_CLASS, "See PEP 585"}
+          ...
+      }
+
+   参见: 数据模型方法 "__class_getitem__()"。
+
+   Added in version 3.9.
+
+PyTypeObject Py_GenericAliasType
+    * 属于 稳定 ABI 自 3.9 版起.*
+
+   由 "Py_GenericAlias()" 所返回的对象的 C 类型。等价于 Python 中的
+   "types.GenericAlias" 。
+
+   Added in version 3.9.

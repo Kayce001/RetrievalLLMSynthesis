@@ -1,0 +1,42 @@
+PyHash API
+**********
+
+See also the "PyTypeObject.tp_hash" member.
+
+type Py_hash_t
+
+   哈希值类型：有符号整数。
+
+   Added in version 3.2.
+
+type Py_uhash_t
+
+   哈希值类型：无符号整数。
+
+   Added in version 3.2.
+
+type PyHash_FuncDef
+
+   "PyHash_GetFuncDef()" 使用的哈希函数定义。
+
+   const char *name
+
+      哈希函数名称（UTF-8 编码的字符串）。
+
+   const int hash_bits
+
+      以比特位表示的哈希值内部大小。
+
+   const int seed_bits
+
+      以比特位表示的输入种子值大小。
+
+   Added in version 3.4.
+
+PyHash_FuncDef *PyHash_GetFuncDef(void)
+
+   获取哈希函数定义。
+
+   参见: **PEP 456** "安全且可互换的哈希算法"。
+
+   Added in version 3.4.

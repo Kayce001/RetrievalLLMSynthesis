@@ -1,0 +1,43 @@
+布尔对象
+********
+
+在 Python 中布尔值是作为整数的子类实现的。 只有两个布尔值，"Py_False"
+和 "Py_True"。 因此，正常的创建和删除功能不适用于布尔值。 不过，下列的
+宏则是可用的。
+
+PyTypeObject PyBool_Type
+    * 属于 稳定 ABI.*
+
+   这个 "PyTypeObject" 的实例代表一个 Python 布尔类型；它与 Python 层
+   面的 "bool" 是相同的对象。
+
+int PyBool_Check(PyObject *o)
+
+   如果 *o* 的类型为 "PyBool_Type" 则返回真值。 此函数总是会成功执行。
+
+PyObject *Py_False
+
+   The Python "False" object.  This object has no methods and is
+   immortal.
+
+在 3.12 版本发生变更: "Py_False" is immortal.
+
+PyObject *Py_True
+
+   The Python "True" object.  This object has no methods and is
+   immortal.
+
+在 3.12 版本发生变更: "Py_True" is immortal.
+
+Py_RETURN_FALSE
+
+   从一个函数返回 "Py_False"。
+
+Py_RETURN_TRUE
+
+   从一个函数返回 "Py_True"。
+
+PyObject *PyBool_FromLong(long v)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   返回 "Py_True" 或 "Py_False"，具体取决于 *v* 的逻辑值。

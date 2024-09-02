@@ -1,0 +1,1250 @@
+Unicode对象和编解码器
+*********************
+
+
+Unicode对象
+===========
+
+自从python3.3中实现了 **PEP 393** 以来，Unicode对象在内部使用各种表示
+形式，以便在保持内存效率的同时处理完整范围的Unicode字符。对于所有代码
+点都低于128、256或65536的字符串，有一些特殊情况；否则，代码点必须低于
+1114112（这是完整的Unicode范围）。
+
+UTF-8 表示将按需创建并缓存在 Unicode 对象中。
+
+备注:
+
+  "Py_UNICODE" 表示形式在 Python 3.12 中同被弃用的 API 一起被移除了，
+  查阅 **PEP 623** 以获得更多信息。
+
+
+Unicode类型
+-----------
+
+以下是用于Python中Unicode实现的基本Unicode对象类型：
+
+type Py_UCS4
+type Py_UCS2
+type Py_UCS1
+    * 属于 稳定 ABI.*
+
+   这些类型是无符号整数类型的类型定义，其宽度足以分别包含 32 位、16 位
+   和 8 位字符。 当需要处理单个 Unicode 字符时，请使用 "Py_UCS4"。
+
+   Added in version 3.3.
+
+type Py_UNICODE
+
+   这是 "wchar_t" 的类型定义，根据平台的不同它可能为 16 位类型或 32 位
+   类型。
+
+   在 3.3 版本发生变更: 在以前的版本中，这是16位类型还是32位类型，这取
+   决于您在构建时选择的是“窄”还是“宽”Unicode版本的Python。
+
+type PyASCIIObject
+type PyCompactUnicodeObject
+type PyUnicodeObject
+
+   这些关于 "PyObject" 的子类型表示了一个 Python Unicode 对象。 在几乎
+   所有情形下，它们不应该被直接使用，因为所有处理 Unicode 对象的 API
+   函数都接受并返回 "PyObject" 类型的指针。
+
+   Added in version 3.3.
+
+PyTypeObject PyUnicode_Type
+    * 属于 稳定 ABI.*
+
+   这个 "PyTypeObject" 实例代表 Python Unicode 类型。 它作为 "str" 公
+   开给 Python 代码。
+
+以下API是C宏和静态内联函数，用于快速检查和访问Unicode对象的内部只读数
+据：
+
+int PyUnicode_Check(PyObject *obj)
+
+   如果对象 *obj* 是 Unicode 对象或 Unicode 子类型的实例则返回真值。
+   此函数总是会成功执行。
+
+int PyUnicode_CheckExact(PyObject *obj)
+
+   如果对象 *obj* 是一个 Unicode 对象，但不是某个子类型的实例则返回真
+   值。 此函数总是会成功执行。
+
+int PyUnicode_READY(PyObject *unicode)
+
+   返回 "0"。 此 API 仅为向下兼容而保留。
+
+   Added in version 3.3.
+
+   自 3.10 版本弃用: 此 API 从 Python 3.12 起将不做任何事。
+
+Py_ssize_t PyUnicode_GET_LENGTH(PyObject *unicode)
+
+   返回以码位点数量表示的 Unicode 字符串长度。 *unicode* 必须为“规范”
+   表示的 Unicode 对象（不会检查这一点）。
+
+   Added in version 3.3.
+
+Py_UCS1 *PyUnicode_1BYTE_DATA(PyObject *unicode)
+Py_UCS2 *PyUnicode_2BYTE_DATA(PyObject *unicode)
+Py_UCS4 *PyUnicode_4BYTE_DATA(PyObject *unicode)
+
+   返回一个用于直接字符访问的指向转换为 UCS1、UCS2 或 UCS4 整数类型的
+   规范表示的指针。 如果规范表示具有正确的字符大小，则不执行检查；使用
+   "PyUnicode_KIND()" 选择正确的函数。
+
+   Added in version 3.3.
+
+PyUnicode_1BYTE_KIND
+PyUnicode_2BYTE_KIND
+PyUnicode_4BYTE_KIND
+
+   返回 "PyUnicode_KIND()" 宏的值。
+
+   Added in version 3.3.
+
+   在 3.12 版本发生变更: "PyUnicode_WCHAR_KIND" 已被移除。
+
+int PyUnicode_KIND(PyObject *unicode)
+
+   返回一个 PyUnicode 类型的常量（见上文），指明此see above) that
+   indicate how many bytes per character this Unicode 对象用来存储每个
+   字符所使用的字节数。 *unicode* 必须为“规范”表示的 Unicode 对象（不
+   会检查这一点）。
+
+   Added in version 3.3.
+
+void *PyUnicode_DATA(PyObject *unicode)
+
+   返回一个指向原始 Unicode 缓冲区的空指针。 *unicode* 必须为“规范”表
+   示的 Unicode 对象（不会检查这一点）。
+
+   Added in version 3.3.
+
+void PyUnicode_WRITE(int kind, void *data, Py_ssize_t index, Py_UCS4 value)
+
+   写入一个规范表示的 *data* (如同用 "PyUnicode_DATA()" 获取)。 此函数
+   不会执行正确性检查，被设计为在循环中使用。 调用者应当如同从其他调用
+   中获取一样缓存 *kind* 值和 *data* 指针。 *index* 是字符串中的索引号
+   (从 0 开始) 而 *value* 是应写入该位置的新码位值。
+
+   Added in version 3.3.
+
+Py_UCS4 PyUnicode_READ(int kind, void *data, Py_ssize_t index)
+
+   从规范表示的 *data* (如同用 "PyUnicode_DATA()" 获取) 中读取一个码位
+   。 不会执行检查或就绪调用。
+
+   Added in version 3.3.
+
+Py_UCS4 PyUnicode_READ_CHAR(PyObject *unicode, Py_ssize_t index)
+
+   从 Unicode 对象 *unicode* 读取一个字符，必须为“规范”表示形式。 如果
+   你执行多次连续读取则此函数的效率将低于 "PyUnicode_READ()"。
+
+   Added in version 3.3.
+
+Py_UCS4 PyUnicode_MAX_CHAR_VALUE(PyObject *unicode)
+
+   返回适合基于 *unicode* 创建另一个字符串的最大码位点，该参数必须为“
+   规范”表示形式。 这始终是一种近似但比在字符串上执行迭代更高效。
+
+   Added in version 3.3.
+
+int PyUnicode_IsIdentifier(PyObject *unicode)
+    * 属于 稳定 ABI.*
+
+   如果字符串按照语言定义是合法的标识符则返回 "1"，参见 标识符和关键字
+   小节。 否则返回 "0"。
+
+   在 3.9 版本发生变更: 如果字符串尚未就绪则此函数不会再调用
+   "Py_FatalError()"。
+
+
+Unicode字符属性
+---------------
+
+Unicode提供了许多不同的字符特性。最常需要的宏可以通过这些宏获得，这些
+宏根据Python配置映射到C函数。
+
+int Py_UNICODE_ISSPACE(Py_UCS4 ch)
+
+   根据 *ch* 是否为空白字符返回 "1" 或 "0"。
+
+int Py_UNICODE_ISLOWER(Py_UCS4 ch)
+
+   根据 *ch* 是否为小写字符返回 "1" 或 "0"。
+
+int Py_UNICODE_ISUPPER(Py_UCS4 ch)
+
+   根据 *ch* 是否为大写字符返回 "1" 或 "0"
+
+int Py_UNICODE_ISTITLE(Py_UCS4 ch)
+
+   根据 *ch* 是否为标题化的大小写返回 "1" 或 "0"。
+
+int Py_UNICODE_ISLINEBREAK(Py_UCS4 ch)
+
+   根据 *ch* 是否为换行类字符返回 "1" 或 "0"。
+
+int Py_UNICODE_ISDECIMAL(Py_UCS4 ch)
+
+   根据 *ch* 是否为十进制数字符返回 "1" 或 "0"。
+
+int Py_UNICODE_ISDIGIT(Py_UCS4 ch)
+
+   根据 *ch* 是否为数码类字符返回 "1" 或 "0"。
+
+int Py_UNICODE_ISNUMERIC(Py_UCS4 ch)
+
+   根据 *ch* 是否为数值类字符返回 "1" 或 "0"。
+
+int Py_UNICODE_ISALPHA(Py_UCS4 ch)
+
+   根据 *ch* 是否为字母类字符返回 "1" 或 "0"。
+
+int Py_UNICODE_ISALNUM(Py_UCS4 ch)
+
+   根据 *ch* 是否为字母数字类字符返回 "1" 或 "0"。
+
+int Py_UNICODE_ISPRINTABLE(Py_UCS4 ch)
+
+   根据 *ch* 是否为可打印字符返回 "1" 或``0``。 不可打印字符是指在
+   Unicode 字符数据库中被定义为 "Other" 或 "Separator" 的字符，例外情
+   况是 ASCII 空格 (0x20) 被视为可打印字符。 (请注意在此语境下可打印字
+   符是指当在字符串上发起调用 "repr()" 时不应被转义的字符。 它们字符串
+   写入 "sys.stdout" 或 "sys.stderr" 时所需的处理无关)。
+
+这些 API 可用于快速直接的字符转换：
+
+Py_UCS4 Py_UNICODE_TOLOWER(Py_UCS4 ch)
+
+   返回转换为小写形式的字符 *ch*。
+
+   自 3.3 版本弃用: 此函数使用简单的大小写映射。
+
+Py_UCS4 Py_UNICODE_TOUPPER(Py_UCS4 ch)
+
+   返回转换为大写形式的字符 *ch*。
+
+   自 3.3 版本弃用: 此函数使用简单的大小写映射。
+
+Py_UCS4 Py_UNICODE_TOTITLE(Py_UCS4 ch)
+
+   返回转换为标题大小写形式的字符 *ch*。
+
+   自 3.3 版本弃用: 此函数使用简单的大小写映射。
+
+int Py_UNICODE_TODECIMAL(Py_UCS4 ch)
+
+   将字符 *ch* 转换为十进制正整数返回。 如果无法转换则返回 "-1"。 此函
+   数不会引发异常。
+
+int Py_UNICODE_TODIGIT(Py_UCS4 ch)
+
+   将字符 *ch* 转换为单个数码位的整数返回。 如果无法转换则返回 "-1"。
+   此函数不会引发异常。
+
+double Py_UNICODE_TONUMERIC(Py_UCS4 ch)
+
+   将字符 *ch* 转换为双精度浮点数返回。 如果无法转换则返回 "-1.0"。 此
+   函数不会引发异常。
+
+这些 API 可被用来操作代理项：
+
+int Py_UNICODE_IS_SURROGATE(Py_UCS4 ch)
+
+   检测 *ch* 是否为代理项 ("0xD800 <= ch <= 0xDFFF")。
+
+int Py_UNICODE_IS_HIGH_SURROGATE(Py_UCS4 ch)
+
+   检测 *ch* 是否为高代理项 ("0xD800 <= ch <= 0xDBFF")。
+
+int Py_UNICODE_IS_LOW_SURROGATE(Py_UCS4 ch)
+
+   检测 *ch* 是否为低代理项 ("0xDC00 <= ch <= 0xDFFF")。
+
+Py_UCS4 Py_UNICODE_JOIN_SURROGATES(Py_UCS4 high, Py_UCS4 low)
+
+   合并两个代理项字符并返回单个 "Py_UCS4" 值。 *high* 和 *low* 分别为
+   一个代理项对的开头和末尾代理项。 *high* 取值范围必须为 [0xD800;
+   0xDBFF] 而 *low* 取值范围必须为 [0xDC00; 0xDFFF]。
+
+
+创建和访问 Unicode 字符串
+-------------------------
+
+要创建 Unicode 对象和访问其基本序列属性，请使用这些 API：
+
+PyObject *PyUnicode_New(Py_ssize_t size, Py_UCS4 maxchar)
+    *返回值：新的引用。*
+
+   创建一个新的 Unicode 对象。 *maxchar* 应为可放入字符串的实际最大码
+   位。 作为一个近似值，它可被向上舍入到序列 127, 255, 65535, 1114111
+   中最接近的值。
+
+   这是分配新的 Unicode 对象的推荐方式。 使用此函数创建的对象不可改变
+   大小。
+
+   Added in version 3.3.
+
+PyObject *PyUnicode_FromKindAndData(int kind, const void *buffer, Py_ssize_t size)
+    *返回值：新的引用。*
+
+   以给定的 *kind* 创建一个新的 Unicode 对象（可能的值为
+   "PyUnicode_1BYTE_KIND" 等，即 "PyUnicode_KIND()" 所返回的值）。
+   *buffer* 必须指向由此分类所给出的，以每字符 1, 2 或 4 字节单位的
+   *size* 大小的数组。
+
+   如有必要，输入 *buffer* 将被拷贝并转换为规范表示形式。 例如，如果
+   *buffer* 是一个 UCS4 字符串 ("PyUnicode_4BYTE_KIND") 且仅由 UCS1 范
+   围内的码位组成，它将被转换为 UCS1 ("PyUnicode_1BYTE_KIND")。
+
+   Added in version 3.3.
+
+PyObject *PyUnicode_FromStringAndSize(const char *str, Py_ssize_t size)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   根据字符缓冲区 *str* 创建一个 Unicode 对象。 字节数据将按 UTF-8 编
+   码格式来解读。 缓冲区会被拷贝到新的对象中。 返回值可以是一个共享对
+   象，即其数据不允许修改。
+
+   此函数会因以下情况而引发 "SystemError":
+
+   * *size* < 0,
+
+   * *str* 为 "NULL" 且 *size* > 0
+
+   在 3.12 版本发生变更: *str* == "NULL" 且 *size* > 0 不再被允许。
+
+PyObject *PyUnicode_FromString(const char *str)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   根据 UTF-8 编码的以空值结束的字符缓冲区 *str* 创建一个 Unicode 对象
+   。
+
+PyObject *PyUnicode_FromFormat(const char *format, ...)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   接受一个 C "printf()" 风格的 *format* 字符串和可变数量的参数，计算
+   结果 Python Unicode 字符串的大小并返回包含已格式化值的字符串。 可变
+   数量的参数必须均为 C 类型并且必须恰好与 *format* ASCII 编码字符串中
+   的格式字符相对应。
+
+   转换标记符包含两个或更多字符并具有以下组成，且必须遵循此处规定的顺
+   序：
+
+   1. "'%'" 字符，用于标记转换符的起始。
+
+   2. 转换旗标（可选），用于影响某些转换类型的结果。
+
+   3. 最小字段宽度（可选）。 如果指定为 "'*'" (星号)，则实际宽度会在下
+      一参数中给出，该参数必须为 int 类型，要转换的对象则放在最小字段
+      宽度和可选精度之后。
+
+   4. 精度（可选），以在 "'.'" (点号) 之后加精度值的形式给出。 如果指
+      定为 "'*'" (星号)，则实际精度会在下一参数中给出，该参数必须为
+      int 类型，要转换的对象则放在精度之后。
+
+   5. 长度修饰符（可选）。
+
+   6. 转换类型。
+
+   转换旗标为：
+
+   +---------+---------------------------------------------------------------+
+   | 标志位  | 含意                                                          |
+   |=========|===============================================================|
+   | "0"     | 转换将为数字值填充零字符。                                    |
+   +---------+---------------------------------------------------------------+
+   | "-"     | 转换值将靠左对齐（如果同时给出则会覆盖 "0" 旗标）。           |
+   +---------+---------------------------------------------------------------+
+
+   以下整数转换的长度修饰符 ("d", "i", "o", "u", "x", or "X") 指明参数
+   的类型 (默认为 int):
+
+   +------------+-------------------------------------------------------+
+   | 修饰符     | 类型                                                  |
+   |============|=======================================================|
+   | "l"        | long 或 unsigned long                                 |
+   +------------+-------------------------------------------------------+
+   | "ll"       | long long 或 unsigned long long                       |
+   +------------+-------------------------------------------------------+
+   | "j"        | "intmax_t" 或 "uintmax_t"                             |
+   +------------+-------------------------------------------------------+
+   | "z"        | "size_t" 或 "ssize_t"                                 |
+   +------------+-------------------------------------------------------+
+   | "t"        | "ptrdiff_t"                                           |
+   +------------+-------------------------------------------------------+
+
+   针对以下转换 "s" 或 "V" 的长度修饰符 "l" 指明参数的类型为 const
+   wchar_t*。
+
+   转换指示符如下:
+
+   +-----------------------------------+-----------------------------------+-----------------------------------+
+   | 转换指示符                        | 类型                              | 注释                              |
+   |===================================|===================================|===================================|
+   | "%"                               | *不适用*                          | 字面的 "%" 字符。                 |
+   +-----------------------------------+-----------------------------------+-----------------------------------+
+   | "d", "i"                          | 由长度修饰符指明                  | 有符号 C 整数的十进制表示。       |
+   +-----------------------------------+-----------------------------------+-----------------------------------+
+   | "u"                               | 由长度修饰符指明                  | 无符号 C 整数的十进制表示。       |
+   +-----------------------------------+-----------------------------------+-----------------------------------+
+   | "o"                               | 由长度修饰符指明                  | 无符号 C 整数的八进制表示。       |
+   +-----------------------------------+-----------------------------------+-----------------------------------+
+   | "x"                               | 由长度修饰符指明                  | 无符号 C 整数的十六进制表示（小写 |
+   |                                   |                                   | ）。                              |
+   +-----------------------------------+-----------------------------------+-----------------------------------+
+   | "X"                               | 由长度修饰符指明                  | 无符号 C 整数的十六进制表示（大写 |
+   |                                   |                                   | ）。                              |
+   +-----------------------------------+-----------------------------------+-----------------------------------+
+   | "c"                               | int                               | 单个字符。                        |
+   +-----------------------------------+-----------------------------------+-----------------------------------+
+   | "s"                               | const char* 或 const wchar_t*     | 以 null 为终止符的 C 字符数组。   |
+   +-----------------------------------+-----------------------------------+-----------------------------------+
+   | "p"                               | const void*                       | 一个 C  指针的十六进制表示形式。  |
+   |                                   |                                   | 基本等价于 "printf("%p")" 但它会  |
+   |                                   |                                   | 确 保以字面值 "0x" 开头而不管系统 |
+   |                                   |                                   | 平台上的 "printf" 输出是什么。    |
+   +-----------------------------------+-----------------------------------+-----------------------------------+
+   | "A"                               | PyObject*                         | "ascii()" 调用的结果。            |
+   +-----------------------------------+-----------------------------------+-----------------------------------+
+   | "U"                               | PyObject*                         | 一个 Unicode 对象。               |
+   +-----------------------------------+-----------------------------------+-----------------------------------+
+   | "V"                               | PyObject*, const char* 或 const   | 一个 Unicode 对象 (可以为 "NULL") |
+   |                                   | wchar_t*                          | 和一个以空值结束的 C 字符数组作为 |
+   |                                   |                                   | 第二个形参（如果第一个形参为      |
+   |                                   |                                   | "NULL"，第二个形参将被使用）。    |
+   +-----------------------------------+-----------------------------------+-----------------------------------+
+   | "S"                               | PyObject*                         | 调用 "PyObject_Str()" 的结果。    |
+   +-----------------------------------+-----------------------------------+-----------------------------------+
+   | "R"                               | PyObject*                         | 调用 "PyObject_Repr()" 的结果。   |
+   +-----------------------------------+-----------------------------------+-----------------------------------+
+
+   备注:
+
+     格式符的宽度单位是字符数而不是字节数。 格式符的精度单位对于
+     ""%s"" 和 ""%V"" (如果 "PyObject*" 参数为 "NULL") 是字节数或
+     "wchar_t" 项数 (如果使用了长度修饰符 "l")，而对于 ""%A"", ""%U"",
+     ""%S"", ""%R"" 和 ""%V"" (如果 "PyObject*" 参数不为 "NULL") 则为
+     字符数。
+
+   备注:
+
+     与 C "printf()" 不同的是 "0" 旗标即使在为整数转换 ("d", "i", "u",
+     "o", "x", or "X") 指定精度时也是有效的。
+
+   在 3.2 版本发生变更: 增加了对 ""%lld"" 和 ""%llu"" 的支持。
+
+   在 3.3 版本发生变更: 增加了对 ""%li"", ""%lli"" 和 ""%zi"" 的支持。
+
+   在 3.4 版本发生变更: 增加了对 ""%s"", ""%A"", ""%U"", ""%V"",
+   ""%S"", ""%R"" 的宽度和精度格式符支持。
+
+   在 3.12 版本发生变更: 支持转换说明符 "o" 和 "X"。 支持长度修饰符
+   "j" 和 "t"。 长度修饰符现在将应用于所有整数转换。 长度修饰符 "l" 现
+   在将应用于转换说明符 "s" 和 "V"。 支持可变宽度和精度 "*"。 支持旗标
+   "-"。不可识别的格式字符现在会设置一个 "SystemError"。 在之前版本中
+   它会导致所有剩余格式字符串被原样拷贝到结果字符串，并丢弃任何额外的
+   参数。
+
+PyObject *PyUnicode_FromFormatV(const char *format, va_list vargs)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   等同于 "PyUnicode_FromFormat()" 但它将接受恰好两个参数。
+
+PyObject *PyUnicode_FromObject(PyObject *obj)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   如有必要将把一个 Unicode 子类型的实例拷贝为新的真实 Unicode 对象。
+   如果 *obj* 已经是一个真实 Unicode 对象（而非子类型），则返回一个新
+   的指向该对象的 *strong reference*。
+
+   非 Unicode 或其子类型的对象将导致 "TypeError"。
+
+PyObject *PyUnicode_FromEncodedObject(PyObject *obj, const char *encoding, const char *errors)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   将一个已编码的对象 *obj* 解码为 Unicode 对象。
+
+   "bytes", "bytearray" 和其他 *字节类对象* 将按照给定的 *encoding* 来
+   解码并使用由 *errors* 定义的错误处理方式。 两者均可为 "NULL" 即让接
+   口使用默认值（请参阅 内置编解码器 了解详情）。
+
+   所有其他对象，包括 Unicode 对象，都将导致设置 "TypeError"。
+
+   如有错误该 API 将返回 "NULL"。 调用方要负责递减指向所返回对象的引用
+   。
+
+Py_ssize_t PyUnicode_GetLength(PyObject *unicode)
+    * 属于 稳定 ABI 自 3.7 版起.*
+
+   返回 Unicode 对象码位的长度。
+
+   Added in version 3.3.
+
+Py_ssize_t PyUnicode_CopyCharacters(PyObject *to, Py_ssize_t to_start, PyObject *from, Py_ssize_t from_start, Py_ssize_t how_many)
+
+   将一个 Unicode 对象中的字符拷贝到另一个对象中。 此函数会在必要时执
+   行字符转换并会在可能的情况下回退到 "memcpy()"。 在出错时将返回 "-1"
+   并设置一个异常，在其他情况下将返回拷贝的字符数量。
+
+   Added in version 3.3.
+
+Py_ssize_t PyUnicode_Fill(PyObject *unicode, Py_ssize_t start, Py_ssize_t length, Py_UCS4 fill_char)
+
+   使用一个字符填充字符串：将 *fill_char* 写入
+   "unicode[start:start+length]"。
+
+   如果 *fill_char* 值大于字符串最大字符值，或者如果字符串有 1 以上的
+   引用将执行失败。
+
+   返回写入的字符数量，或者在出错时返回 "-1" 并引发一个异常。
+
+   Added in version 3.3.
+
+int PyUnicode_WriteChar(PyObject *unicode, Py_ssize_t index, Py_UCS4 character)
+    * 属于 稳定 ABI 自 3.7 版起.*
+
+   将一个字符写入到字符串。 字符串必须通过 "PyUnicode_New()" 创建。 由
+   于 Unicode 字符串应当是不可变的，因此该字符串不能被共享，或是被哈希
+   。
+
+   该函数将检查 *unicode* 是否为 Unicode 对象，索引是否未越界，并且对
+   象是否可被安全地修改（即其引用计数为一）。
+
+   Added in version 3.3.
+
+Py_UCS4 PyUnicode_ReadChar(PyObject *unicode, Py_ssize_t index)
+    * 属于 稳定 ABI 自 3.7 版起.*
+
+   从字符串读取一个字符。 该函数将检查 *unicode* 是否为 Unicode 对象且
+   索引是否未越界，这不同于 "PyUnicode_READ_CHAR()"，后者不会执行任何
+   错误检查。
+
+   Added in version 3.3.
+
+PyObject *PyUnicode_Substring(PyObject *unicode, Py_ssize_t start, Py_ssize_t end)
+    *返回值：新的引用。** 属于 稳定 ABI 自 3.7 版起.*
+
+   返回 *unicode* 的一个子串，从字符索引 *start* (包括) 到字符索引
+   *end* (不包括)。 不支持负索引号。
+
+   Added in version 3.3.
+
+Py_UCS4 *PyUnicode_AsUCS4(PyObject *unicode, Py_UCS4 *buffer, Py_ssize_t buflen, int copy_null)
+    * 属于 稳定 ABI 自 3.7 版起.*
+
+   将字符串 *unicode* 拷贝到一个 UCS4 缓冲区，包括一个空字符，如果设置
+   了 *copy_null* 的话。 出错时返回 "NULL" 并设置一个异常（特别是当
+   *buflen* 小于 *unicode* 的长度时，将设置 "SystemError" 异常）。 成
+   功时返回 *buffer*。
+
+   Added in version 3.3.
+
+Py_UCS4 *PyUnicode_AsUCS4Copy(PyObject *unicode)
+    * 属于 稳定 ABI 自 3.7 版起.*
+
+   将字符串 *unicode* 拷贝到使用 "PyMem_Malloc()" 分配的新 UCS4 缓冲区
+   。 如果执行失败，将返回 "NULL" 并设置 "MemoryError"。 返回的缓冲区
+   将总是会添加一个额外的空码位。
+
+   Added in version 3.3.
+
+
+语言区域编码格式
+----------------
+
+当前语言区域编码格式可被用来解码来自操作系统的文本。
+
+PyObject *PyUnicode_DecodeLocaleAndSize(const char *str, Py_ssize_t length, const char *errors)
+    *返回值：新的引用。** 属于 稳定 ABI 自 3.7 版起.*
+
+   解码字符串在 Android 和 VxWorks 上使用 UTF-8，在其他平台上则使用当
+   前语言区域编码格式。 支持的错误处理器有 ""strict"" 和
+   ""surrogateescape"" (**PEP 383**)。 如果 *errors* 为 "NULL" 则解码
+   器将使用 ""strict"" 错误处理器。 *str* 必须以一个空字符结束但不可包
+   含嵌入的空字符。
+
+   使用 "PyUnicode_DecodeFSDefaultAndSize()" 以 *filesystem encoding
+   and error handler* 来解码字符串。
+
+   此函数将忽略 Python UTF-8 模式。
+
+   参见: The "Py_DecodeLocale()" 函数。
+
+   Added in version 3.3.
+
+   在 3.7 版本发生变更: 此函数现在也会为 "surrogateescape" 错误处理器
+   使用当前语言区域编码格式，但在 Android 上例外。 在之前版本中，
+   "Py_DecodeLocale()" 将被用于 "surrogateescape"，而当前语言区域编码
+   格式将被用于 "strict"。
+
+PyObject *PyUnicode_DecodeLocale(const char *str, const char *errors)
+    *返回值：新的引用。** 属于 稳定 ABI 自 3.7 版起.*
+
+   类似于 "PyUnicode_DecodeLocaleAndSize()"，但会使用 "strlen()" 来计
+   算字符串长度。
+
+   Added in version 3.3.
+
+PyObject *PyUnicode_EncodeLocale(PyObject *unicode, const char *errors)
+    *返回值：新的引用。** 属于 稳定 ABI 自 3.7 版起.*
+
+   编码 Unicode 对象在 Android 和 VxWorks 上使用 UTF-8，在其他平台上使
+   用当前语言区域编码格式。 支持的错误处理器有 ""strict"" 和
+   ""surrogateescape"" (**PEP 383**)。 如果 *errors* 为 "NULL" 则编码
+   器将使用 ""strict"" 错误处理器。 返回一个 "bytes" 对象。 *unicode*
+   不可包含嵌入的空字符。
+
+   使用 "PyUnicode_EncodeFSDefault()" 将字符串编码为 *filesystem
+   encoding and error handler*。
+
+   此函数将忽略 Python UTF-8 模式。
+
+   参见: "Py_EncodeLocale()" 函数。
+
+   Added in version 3.3.
+
+   在 3.7 版本发生变更: 此函数现在也会为 "surrogateescape" 错误处理器
+   使用当前语言区域编码格式，但在 Android 上例外。 在之前版本中，
+   "Py_EncodeLocale()" 将被用于 "surrogateescape"，而当前语言区域编码
+   格式将被用于 "strict"。
+
+
+文件系统编码格式
+----------------
+
+使用 *filesystem encoding and error handler* 的编码和解码函数 (**PEP
+383** 和 **PEP 529**)。
+
+要在参数解析期间将文件名编码为 "bytes"，应当使用 ""O&"" 转换器，传入
+"PyUnicode_FSConverter()" 作为转换函数：
+
+int PyUnicode_FSConverter(PyObject *obj, void *result)
+    * 属于 稳定 ABI.*
+
+   ParseTuple 转换器：编码 "str" 对象 -- 直接获取或是通过
+   "os.PathLike" 接口 -- 使用 "PyUnicode_EncodeFSDefault()" 转为
+   "bytes"；"bytes" 对象将被原样输出。 *result* 必须为 PyBytesObject*
+   并将在其不再被使用时释放。
+
+   Added in version 3.1.
+
+   在 3.6 版本发生变更: 接受一个 *path-like object*。
+
+要在参数解析期间将文件名解码为 "str"，应当使用 ""O&"" 转换器，传入
+"PyUnicode_FSDecoder()" 作为转换函数：
+
+int PyUnicode_FSDecoder(PyObject *obj, void *result)
+    * 属于 稳定 ABI.*
+
+   ParseTuple 转换器：解码 "bytes" 对象 -- 直接获取或是通过
+   "os.PathLike" 接口间接获取 -- 使用
+   "PyUnicode_DecodeFSDefaultAndSize()" 转为 "str"；"str" 对象将被原样
+   输出。 *result* 必须为 PyUnicodeObject* 并将在其不再被使用时释放。
+
+   Added in version 3.2.
+
+   在 3.6 版本发生变更: 接受一个 *path-like object*。
+
+PyObject *PyUnicode_DecodeFSDefaultAndSize(const char *str, Py_ssize_t size)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   使用 *filesystem encoding and error handler* 解码字符串。
+
+   如果你需要以当前语言区域编码格式解码字符串，请使用
+   "PyUnicode_DecodeLocaleAndSize()"。
+
+   参见: The "Py_DecodeLocale()" 函数。
+
+   在 3.6 版本发生变更: 现在将使用 *文件系统编码格式和错误处理器*。
+
+PyObject *PyUnicode_DecodeFSDefault(const char *str)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   使用 *filesystem encoding and error handler* 解码以空值结尾的字符串
+   。
+
+   如果字符串长度已知，则使用 "PyUnicode_DecodeFSDefaultAndSize()"。
+
+   在 3.6 版本发生变更: 现在将使用 *文件系统编码格式和错误处理器*。
+
+PyObject *PyUnicode_EncodeFSDefault(PyObject *unicode)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   使用 *filesystem encoding and error handler* 编码一个 Unicode 对象
+   ，并返回 "bytes"。 请注意结果 "bytes" 对象可以包含空字节。
+
+   如果你需要以当前语言区域编码格式编码字符串，请使用
+   "PyUnicode_EncodeLocale()"。
+
+   参见: "Py_EncodeLocale()" 函数。
+
+   Added in version 3.2.
+
+   在 3.6 版本发生变更: 现在将使用 *文件系统编码格式和错误处理器*。
+
+
+wchar_t 支持
+------------
+
+在受支持的平台上支持 "wchar_t":
+
+PyObject *PyUnicode_FromWideChar(const wchar_t *wstr, Py_ssize_t size)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   根据给定的 *size* 的 "wchar_t" 缓冲区 *wstr* 创建一个 Unicode 对象
+   。 传入 "-1" 作为 *size* 表示该函数必须使用 "wcslen()" 自动计算缓冲
+   区长度。 失败时将返回 "NULL"。
+
+Py_ssize_t PyUnicode_AsWideChar(PyObject *unicode, wchar_t *wstr, Py_ssize_t size)
+    * 属于 稳定 ABI.*
+
+   将 Unicode 对象的内容拷贝到 "wchar_t" 缓冲区 *wstr* 中。 至多拷贝
+   *size* 个 "wchar_t" 字符（不包括可能存在的末尾空结束字符）。 返回拷
+   贝的 "wchar_t" 字符数或在出错时返回 "-1"。
+
+   当 *wstr* 为 "NULL" 时，则改为返回存储包括结束空值在内的所有
+   *unicode* 内容所需的 *size*。
+
+   请注意结果 wchar_t* 字符串可能是以空值结束也可能不是。 调用方要负责
+   确保 wchar_t* 字符串以空值结束以防应用有此要求。 此外，请注意
+   wchar_t* 字符串有可能包含空字符，这将导致字符串在与大多数 C 函数一
+   起使用时被截断。
+
+wchar_t *PyUnicode_AsWideCharString(PyObject *unicode, Py_ssize_t *size)
+    * 属于 稳定 ABI 自 3.7 版起.*
+
+   将 Unicode 对象转换为宽字符串。 输出字符串将总是以空字符结尾。 如果
+   *size* 不为 "NULL"，则会将宽字符的数量（不包括结尾空字符）写入到
+   **size* 中。 请注意结果 "wchar_t" 字符串可能包含空字符，这将导致在
+   大多数 C 函数中使用时字符串被截断。 如果 *size* 为 "NULL" 并且
+   wchar_t* 字符串包含空字符则将引发 "ValueError"。
+
+   成功时返回由 "PyMem_New" 分配的缓冲区（使用 "PyMem_Free()" 来释放它
+   ）。 发生错误时，则返回 "NULL" 并且 **size* 将是未定义的。 如果内存
+   分配失败则会引发 "MemoryError"。
+
+   Added in version 3.2.
+
+   在 3.7 版本发生变更: 如果 *size* 为 "NULL" 且 wchar_t* 字符串包含空
+   字符则会引发 "ValueError"。
+
+
+内置编解码器
+============
+
+Python 提供了一组以 C 编写以保证运行速度的内置编解码器。 所有这些编解
+码器均可通过下列函数直接使用。
+
+下列 API 大都接受 encoding 和 errors 两个参数，它们具有与在内置
+"str()" 字符串对象构造器中同名参数相同的语义。
+
+将 encoding 设为 "NULL" 将使用默认编码格式即 UTF-8。 文件系统调用应当
+使用 "PyUnicode_FSConverter()" 来编码文件名。 这将在内部使用
+*filesystem encoding and error handler*。
+
+错误处理方式由 errors 设置并且也可以设为 "NULL" 表示使用为编解码器定义
+的默认处理方式。 所有内置编解码器的默认错误处理方式是 "strict" (会引发
+"ValueError")。
+
+编解码器都使用类似的接口。 为了保持简单只有与下列泛型编解码器的差异才
+会记录在文档中。
+
+
+泛型编解码器
+------------
+
+以下是泛型编解码器的 API:
+
+PyObject *PyUnicode_Decode(const char *str, Py_ssize_t size, const char *encoding, const char *errors)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   通过解码已编码字节串 *str* 的 *size* 个字节创建一个 Unicode 对象。
+   *encoding* 和 *errors* 具有与 "str()" 内置函数中同名形参相同的含义
+   。 要使用的编解码将使用 Python 编解码器注册表来查找。 如果编解码器
+   引发了异常则返回 "NULL"。
+
+PyObject *PyUnicode_AsEncodedString(PyObject *unicode, const char *encoding, const char *errors)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   编码一个 Unicode 对象并将结果作为 Python 字节串对象返回。
+   *encoding* 和 *errors* 具有与 Unicode "encode()" 方法中同名形参相同
+   的含义。 要使用的编解码器将使用 Python 编解码器注册表来查找。 如果
+   编解码器引发了异常则返回 "NULL"。
+
+
+UTF-8 编解码器
+--------------
+
+以下是 UTF-8 编解码器 API:
+
+PyObject *PyUnicode_DecodeUTF8(const char *str, Py_ssize_t size, const char *errors)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   通过解码 UTF-8 编码的字节串 *str* 的的 *size* 个字节创建一个
+   Unicode 对象。 如果编解码器引发了异常则返回 "NULL"。
+
+PyObject *PyUnicode_DecodeUTF8Stateful(const char *str, Py_ssize_t size, const char *errors, Py_ssize_t *consumed)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   如果 *consumed* 为 "NULL"，则行为类似于 "PyUnicode_DecodeUTF8()"。
+   如果 *consumed* 不为 "NULL"，则末尾的不完整 UTF-8 字节序列将不被视
+   为错误。 这些字节将不会被解码并且已被解码的字节数将存储在
+   *consumed* 中。
+
+PyObject *PyUnicode_AsUTF8String(PyObject *unicode)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   使用 UTF-8 编码 Unicode 对象并将结果作为 Python 字节串对象返回。 错
+   误处理方式为 "strict"。 如果编解码器引发了异常则将返回 "NULL"。
+
+const char *PyUnicode_AsUTF8AndSize(PyObject *unicode, Py_ssize_t *size)
+    * 属于 稳定 ABI 自 3.10 版起.*
+
+   返回一个指向 Unicode 对象的 UTF-8 编码格式数据的指针，并将已编码数
+   据的大小（以字节为单位）存储在 *size* 中。 *size* 参数可以为 "NULL"
+   ；在此情况下数据的大小将不会被存储。 返回的缓冲区总是会添加一个额外
+   的空字节（不包括在 *size* 中），无论是否存在任何其他的空码位。
+
+   在发生错误的情况下，将返回 "NULL" 附带设置一个异常并且不会存储
+   *size* 值。
+
+   这将缓存 Unicode 对象中字符串的 UTF-8 表示形式，并且后续调用将返回
+   指向同一缓存区的指针。 调用方不必负责释放该缓冲区。 缓冲区会在
+   Unicode 对象被作为垃圾回收时被释放并使指向它的指针失效。
+
+   Added in version 3.3.
+
+   在 3.7 版本发生变更: 返回类型现在是 "const char *" 而不是 "char *"
+   。
+
+   在 3.10 版本发生变更: 此函数是 受限 API 的组成部分。
+
+const char *PyUnicode_AsUTF8(PyObject *unicode)
+
+   类似于 "PyUnicode_AsUTF8AndSize()"，但不会存储大小值。
+
+   Added in version 3.3.
+
+   在 3.7 版本发生变更: 返回类型现在是 "const char *" 而不是 "char *"
+   。
+
+
+UTF-32 编解码器
+---------------
+
+以下是 UTF-32 编解码器 API:
+
+PyObject *PyUnicode_DecodeUTF32(const char *str, Py_ssize_t size, const char *errors, int *byteorder)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   从 UTF-32 编码的缓冲区数据解码 *size* 个字节并返回相应的 Unicode 对
+   象。 *errors* (如果不为 "NULL") 定义了错误处理方式。 默认为
+   "strict"。
+
+   如果 *byteorder* 不为 "NULL"，解码器将使用给定的字节序进行解码:
+
+      *byteorder == -1: little endian
+      *byteorder == 0:  native order
+      *byteorder == 1:  big endian
+
+   如果 "*byteorder" 为零，且输入数据的前四个字节为字节序标记 (BOM)，
+   则解码器将切换为该字节序并且 BOM 将不会被拷贝到结果 Unicode 字符串
+   中。 如果 "*byteorder" 为 "-1" 或 "1"，则字节序标记会被拷贝到输出中
+   。
+
+   在完成后，**byteorder* 将在输入数据的末尾被设为当前字节序。
+
+   如果 *byteorder* 为 "NULL"，编解码器将使用本机字节序。
+
+   如果编解码器引发了异常则返回 "NULL"。
+
+PyObject *PyUnicode_DecodeUTF32Stateful(const char *str, Py_ssize_t size, const char *errors, int *byteorder, Py_ssize_t *consumed)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   如果 *consumed* 为 "NULL"，则行为类似于 "PyUnicode_DecodeUTF32()"。
+   如果 *consumed* 不为 "NULL"，则 "PyUnicode_DecodeUTF32Stateful()"
+   将不把末尾的不完整 UTF-32 字节序列（如字节数不可被四整除）视为错误
+   。 这些字节将不会被解码并且已被解码的字节数将存储在 *consumed* 中。
+
+PyObject *PyUnicode_AsUTF32String(PyObject *unicode)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   返回使用 UTF-32 编码格式本机字节序的 Python 字节串。 字节串将总是以
+   BOM 标记打头。 错误处理方式为 "strict"。 如果编解码器引发了异常则返
+   回 "NULL"。
+
+
+UTF-16 编解码器
+---------------
+
+以下是 UTF-16 编解码器的 API:
+
+PyObject *PyUnicode_DecodeUTF16(const char *str, Py_ssize_t size, const char *errors, int *byteorder)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   从 UTF-16 编码的缓冲区数据解码 *size* 个字节并返回相应的 Unicode 对
+   象。 *errors* (如果不为 "NULL") 定义了错误处理方式。 默认为
+   "strict"。
+
+   如果 *byteorder* 不为 "NULL"，解码器将使用给定的字节序进行解码:
+
+      *byteorder == -1: little endian
+      *byteorder == 0:  native order
+      *byteorder == 1:  big endian
+
+   如果 "*byteorder" 为零，且输入数据的前两个字节为字节序标记 (BOM)，
+   则解码器将切换为该字节序并且 BOM 将不会被拷贝到结果 Unicode 字符串
+   中。 如果 "*byteorder" 为 "-1" 或 "1"，则字节序标记会被拷贝到输出中
+   (它将是一个 "\ufeff" 或 "\ufffe" 字符)。
+
+   在完成后，"*byteorder" 将在输入数据的末尾被设为当前字节序。
+
+   如果 *byteorder* 为 "NULL"，编解码器将使用本机字节序。
+
+   如果编解码器引发了异常则返回 "NULL"。
+
+PyObject *PyUnicode_DecodeUTF16Stateful(const char *str, Py_ssize_t size, const char *errors, int *byteorder, Py_ssize_t *consumed)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   如果 *consumed* 为 "NULL"，则行为类似于 "PyUnicode_DecodeUTF16()"。
+   如果 *consumed* 不为 "NULL"，则 "PyUnicode_DecodeUTF16Stateful()"
+   将不把末尾的不完整 UTF-16 字节序列（如为奇数个字节或为分开的替代对
+   ）视为错误。 这些字节将不会被解码并且已被解码的字节数将存储在
+   *consumed* 中。
+
+PyObject *PyUnicode_AsUTF16String(PyObject *unicode)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   返回使用 UTF-16 编码格式本机字节序的 Python 字节串。 字节串将总是以
+   BOM 标记打头。 错误处理方式为 "strict"。 如果编解码器引发了异常则返
+   回 "NULL"。
+
+
+UTF-7 编解码器
+--------------
+
+以下是 UTF-7 编解码器 API:
+
+PyObject *PyUnicode_DecodeUTF7(const char *str, Py_ssize_t size, const char *errors)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   通过解码 UTF-7 编码的字节串 *str* 的 *size* 个字节创建一个 Unicode
+   对象。 如果编解码器引发了异常则返回 "NULL"。
+
+PyObject *PyUnicode_DecodeUTF7Stateful(const char *str, Py_ssize_t size, const char *errors, Py_ssize_t *consumed)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   如果 *consumed* 为 "NULL"，则行为类似于 "PyUnicode_DecodeUTF7()"。
+   如果 *consumed* 不为 "NULL"，则末尾的不完整 UTF-7 base-64 部分将不
+   被视为错误。 这些字节将不会被解码并且已被解码的字节数将存储在
+   *consumed* 中。
+
+
+Unicode-Escape 编解码器
+-----------------------
+
+以下是 "Unicode Escape" 编解码器的 API:
+
+PyObject *PyUnicode_DecodeUnicodeEscape(const char *str, Py_ssize_t size, const char *errors)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   通过解码 Unicode-Escape 编码的字节串 *str* 的 *size* 个字节创建一个
+   Unicode 对象。 如果编解码器引发了异常则返回 "NULL"。
+
+PyObject *PyUnicode_AsUnicodeEscapeString(PyObject *unicode)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   使用 Unicode-Escape 编码 Unicode 对象并将结果作为字节串对象返回。
+   错误处理方式为 "strict"。 如果编解码器引发了异常则将返回 "NULL"。
+
+
+Raw-Unicode-Escape 编解码器
+---------------------------
+
+以下是 "Raw Unicode Escape" 编解码器的 API:
+
+PyObject *PyUnicode_DecodeRawUnicodeEscape(const char *str, Py_ssize_t size, const char *errors)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   通过解码 Raw-Unicode-Escape 编码的字节串 *str* 的 *size* 个字节创建
+   一个 Unicode 对象。 如果编解码器引发了异常则返回 "NULL"。
+
+PyObject *PyUnicode_AsRawUnicodeEscapeString(PyObject *unicode)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   使用 Raw-Unicode-Escape 编码 Unicode 对象并将结果作为字节串对象返回
+   。 错误处理方式为 "strict"。 如果编解码器引发了异常则将返回 "NULL"
+   。
+
+
+Latin-1 编解码器
+----------------
+
+以下是 Latin-1 编解码器的 API: Latin-1 对应于前 256 个 Unicode 码位且
+编码器在编码期间只接受这些码位。
+
+PyObject *PyUnicode_DecodeLatin1(const char *str, Py_ssize_t size, const char *errors)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   通过解码 Latin-1 编码的字节串 *str* 的 *size* 个字节创建一个
+   Unicode 对象。 如果编解码器引发了异常则返回 "NULL"。
+
+PyObject *PyUnicode_AsLatin1String(PyObject *unicode)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   使用 Latin-1 编码 Unicode 对象并将结果作为 Python 字节串对象返回。
+   错误处理方式为 "strict"。 如果编解码器引发了异常则将返回 "NULL"。
+
+
+ASCII 编解码器
+--------------
+
+以下是 ASCII 编解码器的 API。 只接受 7 位 ASCII 数据。 任何其他编码的
+数据都将导致错误。
+
+PyObject *PyUnicode_DecodeASCII(const char *str, Py_ssize_t size, const char *errors)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   通过解码 ASCII 编码的字节串 *str* 的 *size* 个字节创建一个 Unicode
+   对象。 如果编解码器引发了异常则返回 "NULL"。
+
+PyObject *PyUnicode_AsASCIIString(PyObject *unicode)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   使用 ASCII 编码 Unicode 对象并将结果作为 Python 字节串对象返回。 错
+   误处理方式为 "strict"。 如果编解码器引发了异常则将返回 "NULL"。
+
+
+字符映射编解码器
+----------------
+
+此编解码器的特殊之处在于它可被用来实现许多不同的编解码器（而且这实际上
+就是包括在 "encodings" 包中的大部分标准编解码器的实现方式）。 此编解码
+器使用映射来编码和解码字符。 所提供的映射对象必须支持 "__getitem__()"
+映射接口；字典和序列均可胜任。
+
+以下是映射编解码器的 API:
+
+PyObject *PyUnicode_DecodeCharmap(const char *str, Py_ssize_t length, PyObject *mapping, const char *errors)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   通过使用给定的 *mapping* 对象解码已编码字节串 *str* 的 *size* 个字
+   节创建一个 Unicode 对象。 如果编解码器引发了异常则返回 "NULL"。
+
+   如果 *mapping* 为 "NULL"，则将应用 Latin-1 编码格式。 否则
+   *mapping* 必须为字节码位值（0 至 255 范围内的整数）到 Unicode 字符
+   串的映射、整数（将被解读为 Unicode 码位）或 "None"。 未映射的数据字
+   节 -- 这样的数据将导致 "LookupError"，以及被映射到 "None" 的数据，
+   "0xFFFE" 或 "'\ufffe'"，将被视为未定义的映射并导致报错。
+
+PyObject *PyUnicode_AsCharmapString(PyObject *unicode, PyObject *mapping)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   使用给定的 *mapping* 对象编码 Unicode 对象并将结果作为字节串对象返
+   回。 错误处理方式为 "strict"。 如果编解码器引发了异常则将返回
+   "NULL"。
+
+   *mapping* 对象必须将整数 Unicode 码位映射到字节串对象、0 至 255 范
+   围内的整数或 "None"。 未映射的字符码位（将导致 "LookupError" 的数据
+   ）以及映射到 "None" 的数据将被视为“未定义的映射”并导致报错。
+
+以下特殊的编解码器 API 会将 Unicode 映射至 Unicode。
+
+PyObject *PyUnicode_Translate(PyObject *unicode, PyObject *table, const char *errors)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   通过应用字符映射表来转写字符串并返回结果 Unicode 对象。 如果编解码
+   器引发了异常则返回 "NULL"。
+
+   字符映射表必须将整数 Unicode 码位映射到整数 Unicode 码位或 "None" (
+   这将删除相应的字符)。
+
+   映射表只需提供 "__getitem__()" 接口；字典和序列均可胜任。 未映射的
+   字符码位（将导致 "LookupError" 的数据）将保持不变并被原样拷贝。
+
+   *errors* 具有用于编解码器的通常含义。 它可以为 "NULL" 表示使用默认
+   的错误处理方式。
+
+
+Windows 中的 MBCS 编解码器
+--------------------------
+
+以下是 MBCS 编解码器的 API。 目前它们仅在 Windows 中可用并使用 Win32
+MBCS 转换器来实现转换。 请注意 MBCS（或 DBCS）是一类编码格式，而非只有
+一个。 目标编码格式是由运行编解码器的机器上的用户设置定义的。
+
+PyObject *PyUnicode_DecodeMBCS(const char *str, Py_ssize_t size, const char *errors)
+    *返回值：新的引用。** 属于 稳定 ABI on Windows 自 3.7 版起.*
+
+   通过解码 MBCS 编码的字节串 *str* 的 *size* 个字节创建一个 Unicode
+   对象。 如果编解码器引发了异常则返回 "NULL"。
+
+PyObject *PyUnicode_DecodeMBCSStateful(const char *str, Py_ssize_t size, const char *errors, Py_ssize_t *consumed)
+    *返回值：新的引用。** 属于 稳定 ABI on Windows 自 3.7 版起.*
+
+   如果 *consumed* 为 "NULL"，则行为类似于 "PyUnicode_DecodeMBCS()"。
+   如果 *consumed* 不为 "NULL"，则 "PyUnicode_DecodeMBCSStateful()" 将
+   不会解码末尾的不完整字节并且已被解码的字节数将存储在 *consumed* 中
+   。
+
+PyObject *PyUnicode_AsMBCSString(PyObject *unicode)
+    *返回值：新的引用。** 属于 稳定 ABI on Windows 自 3.7 版起.*
+
+   使用 MBCS 编码 Unicode 对象并将结果作为 Python 字节串对象返回。 错
+   误处理方式为 "strict"。 如果编解码器引发了异常则将返回 "NULL"。
+
+PyObject *PyUnicode_EncodeCodePage(int code_page, PyObject *unicode, const char *errors)
+    *返回值：新的引用。** 属于 稳定 ABI on Windows 自 3.7 版起.*
+
+   使用指定的代码页编码 Unicode 对象并返回一个 Python 字节串对象。 如
+   果编解码器引发了异常则返回 "NULL"。 使用 "CP_ACP" 代码页来获取 MBCS
+   解码器。
+
+   Added in version 3.3.
+
+
+方法和槽位
+----------
+
+
+方法与槽位函数
+==============
+
+以下 API 可以处理输入的 Unicode 对象和字符串（在描述中我们称其为字符串
+）并返回适当的 Unicode 对象或整数值。
+
+如果发生异常它们都将返回 "NULL" 或 "-1"。
+
+PyObject *PyUnicode_Concat(PyObject *left, PyObject *right)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   拼接两个字符串得到一个新的 Unicode 字符串。
+
+PyObject *PyUnicode_Split(PyObject *unicode, PyObject *sep, Py_ssize_t maxsplit)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   拆分一个字符串得到一个 Unicode 字符串的列表。 如果 *sep* 为 "NULL"
+   ，则将根据空格来拆分所有子字符串。 否则，将根据指定的分隔符来拆分。
+   最多拆分数为 *maxsplit*。 如为负值，则没有限制。 分隔符不包括在结果
+   列表中。
+
+PyObject *PyUnicode_Splitlines(PyObject *unicode, int keepends)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   根据分行符来拆分 Unicode 字符串，返回一个 Unicode 字符串的列表。
+   CRLF 将被视为一个分行符。 如果 *keepends* 为 "0"，则行分隔符将不包
+   括在结果字符串中。
+
+PyObject *PyUnicode_Join(PyObject *separator, PyObject *seq)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   使用给定的 *separator* 合并一个字符串列表并返回结果 Unicode 字符串
+   。
+
+Py_ssize_t PyUnicode_Tailmatch(PyObject *unicode, PyObject *substr, Py_ssize_t start, Py_ssize_t end, int direction)
+    * 属于 稳定 ABI.*
+
+   如果 *substr* 在给定的端点 (*direction* == "-1" 表示前缀匹配,
+   *direction* == "1" 表示后缀匹配) 与 "unicode[start:end]" 相匹配则返
+   回 "1"，否则返回 "0"。 如果发生错误则返回 "-1"。
+
+Py_ssize_t PyUnicode_Find(PyObject *unicode, PyObject *substr, Py_ssize_t start, Py_ssize_t end, int direction)
+    * 属于 稳定 ABI.*
+
+   返回使用给定的 *direction* (*direction* == "1" 表示前向搜索，
+   *direction* == "-1" 表示后向搜索) 时 *substr* 在
+   "unicode[start:end]" 中首次出现的位置。 返回值为首个匹配的索引号；
+   值为 "-1" 表示未找到匹配，"-2" 则表示发生了错误并设置了异常。
+
+Py_ssize_t PyUnicode_FindChar(PyObject *unicode, Py_UCS4 ch, Py_ssize_t start, Py_ssize_t end, int direction)
+    * 属于 稳定 ABI 自 3.7 版起.*
+
+   返回使用给定的 *direction* (*direction* == "1" 表示前向搜索，
+   *direction* == "-1" 表示后向搜索) 时字符 *ch* 在
+   "unicode[start:end]" 中首次出现的位置。 返回值为首个匹配的索引号；
+   值为 "-1" 表示未找到匹配，"-2" 则表示发生错误并设置了异常。
+
+   Added in version 3.3.
+
+   在 3.7 版本发生变更: 现在 *start* 和 *end* 被调整为与
+   "unicode[start:end]" 类似的行为。
+
+Py_ssize_t PyUnicode_Count(PyObject *unicode, PyObject *substr, Py_ssize_t start, Py_ssize_t end)
+    * 属于 稳定 ABI.*
+
+   返回 *substr* 在 "unicode[start:end]" 中不重叠出现的次数。 如果发生
+   错误则返回 "-1"。
+
+PyObject *PyUnicode_Replace(PyObject *unicode, PyObject *substr, PyObject *replstr, Py_ssize_t maxcount)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   将 *unicode* 中 *substr* 替换为 *replstr* 至多 *maxcount* 次并返回
+   结果 Unicode 对象。 *maxcount* == "-1" 表示全部替换。
+
+int PyUnicode_Compare(PyObject *left, PyObject *right)
+    * 属于 稳定 ABI.*
+
+   比较两个字符串并返回 "-1", "0", "1" 分别表示小于、等于和大于。
+
+   此函数执行失败时返回 "-1"，因此应当调用 "PyErr_Occurred()" 来检查错
+   误。
+
+int PyUnicode_CompareWithASCIIString(PyObject *unicode, const char *string)
+    * 属于 稳定 ABI.*
+
+   将 Unicode 对象 *unicode* 与 *string* 进行比较并返回 "-1", "0", "1"
+   分别表示小于、等于和大于。 最好只传入 ASCII 编码的字符串，但如果输
+   入字符串包含非 ASCII 字符则此函数会将其按 ISO-8859-1 编码格式来解读
+   。
+
+   此函数不会引发异常。
+
+PyObject *PyUnicode_RichCompare(PyObject *left, PyObject *right, int op)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   对两个 Unicode 字符串执行富比较并返回以下值之一:
+
+   * "NULL" 用于引发了异常的情况
+
+   * "Py_True" 或 "Py_False" 用于成功完成比较的情况
+
+   * "Py_NotImplemented" 用于类型组合未知的情况
+
+   可能的 *op* 值有 "Py_GT", "Py_GE", "Py_EQ", "Py_NE", "Py_LT", 和
+   "Py_LE"。
+
+PyObject *PyUnicode_Format(PyObject *format, PyObject *args)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   根据 *format* 和 *args* 返回一个新的字符串对象；这等同于 "format %
+   args"。
+
+int PyUnicode_Contains(PyObject *unicode, PyObject *substr)
+    * 属于 稳定 ABI.*
+
+   检查 *substr* 是否包含在 *unicode* 中并相应返回真值或假值。
+
+   *substr* 必须强制转为一个单元素 Unicode 字符串。 如果发生错误则返回
+   "-1"。
+
+void PyUnicode_InternInPlace(PyObject **p_unicode)
+    * 属于 稳定 ABI.*
+
+   原地内部化参数 *p_unicode。 该参数必须是一个指向 Python Unicode 字
+   符串对象的指针变量的地址。 如果已存在与 *p_unicode 相同的内部化字符
+   串，则将其设为 *p_unicode (释放对旧字符串的引用并新建一个指向内部化
+   字符串对象的 *strong reference*)，否则将保持 *p_unicode 不变并将其
+   内部化 (新建一个 *strong reference*)。 (澄清说明：虽然这里大量提及
+   了引用，但请将此函数视为引用无关的；当且仅当你在调用之前就已拥有该
+   对象时你才会在调用之后也拥有它。)
+
+PyObject *PyUnicode_InternFromString(const char *str)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   "PyUnicode_FromString()" 和 "PyUnicode_InternInPlace()" 的组合操作
+   ，返回一个已内部化的新 Unicode 字符串对象，或一个指向具有相同值的原
+   有内部化字符串对象的新的（“拥有的”）引用。

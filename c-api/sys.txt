@@ -1,0 +1,408 @@
+操作系统实用工具
+****************
+
+PyObject *PyOS_FSPath(PyObject *path)
+    *返回值：新的引用。** 属于 稳定 ABI 自 3.6 版起.*
+
+   返回 *path* 在文件系统中的表示形式。 如果该对象是一个 "str" 或
+   "bytes" 对象，则返回一个新的 *strong reference*。 如果对象实现了
+   "os.PathLike" 接口，则只要它是一个 "str" 或 "bytes" 对象就将返回
+   "__fspath__()"。 在其他情况下将引发 "TypeError" 并返回 "NULL"。
+
+   Added in version 3.6.
+
+int Py_FdIsInteractive(FILE *fp, const char *filename)
+
+   如果名称为 *filename* 的标准Return true (nonzero) if the standard
+   I/O 文件 *fp* 被确认为可交互的则返回真（非零）值。 所有
+   "isatty(fileno(fp))" 为真值的文件都属于这种情况。 如果
+   "PyConfig.interactive" 为非零值，此函数在 *filename* 指针为 "NULL"
+   或者其名称等于字符串 "'<stdin>'" 或 "'???'" 之一时也将返回真值。
+
+   此函数不可在 Python 被初始化之前调用。
+
+void PyOS_BeforeFork()
+    * 属于 稳定 ABI on platforms with fork() 自 3.7 版起.*
+
+   在进程分叉之前准备某些内部状态的函数。 此函数应当在调用 "fork()" 或
+   者任何类似的克隆当前进程的函数之前被调用。 只适用于定义了 "fork()"
+   的系统。
+
+   警告:
+
+     C "fork()" 调用应当只在 "main" 线程 (位于 "main" 解释器) 中进行。
+     对于 "PyOS_BeforeFork()" 来说也是如此。
+
+   Added in version 3.7.
+
+void PyOS_AfterFork_Parent()
+    * 属于 稳定 ABI on platforms with fork() 自 3.7 版起.*
+
+   在进程分叉之后更新某些内部状态的函数。 此函数应当在调用 "fork()" 或
+   任何类似的克隆当前进程的函数之后被调用，无论进程克隆是否成功。 只适
+   用于定义了 "fork()" 的系统。
+
+   警告:
+
+     C "fork()" 调用应当只在 "main" 线程 (位于 "main" 解释器) 中进行。
+     对于 "PyOS_AfterFork_Parent()" 来说也是如此。
+
+   Added in version 3.7.
+
+void PyOS_AfterFork_Child()
+    * 属于 稳定 ABI on platforms with fork() 自 3.7 版起.*
+
+   在进程分叉之后更新内部解释器状态的函数。 此函数必须在调用 "fork()"
+   或任何类似的克隆当前进程的函数之后在子进程中被调用，如果该进程有机
+   会回调到 Python 解释器的话。 只适用于定义了 "fork()" 的系统。
+
+   警告:
+
+     C "fork()" 调用应当只在 "main" 线程 (位于 "main" 解释器) 中进行。
+     对于 "PyOS_AfterFork_Child()" 来说也是如此。
+
+   Added in version 3.7.
+
+   参见:
+
+     "os.register_at_fork()" 允许注册可被 "PyOS_BeforeFork()",
+     "PyOS_AfterFork_Parent()" 和 "PyOS_AfterFork_Child()" 调用的自定
+     义 Python 函数。
+
+void PyOS_AfterFork()
+    * 属于 稳定 ABI on platforms with fork().*
+
+   在进程分叉之后更新某些内部状态的函数；如果要继续使用 Python 解释器
+   则此函数应当在新进程中被调用。 如果已将一个新的可执行文件载入到新进
+   程中，则不需要调用此函数。
+
+   自 3.7 版本弃用: 此函数已被 "PyOS_AfterFork_Child()" 取代。
+
+int PyOS_CheckStack()
+    * 属于 稳定 ABI on platforms with USE_STACKCHECK 自 3.7 版起.*
+
+   当解释器耗尽栈空间时返回真值。 这是一个可靠的检测，但仅在定义了
+   "USE_STACKCHECK" 时可用（目前是在使用 Microsoft Visual C++ 编译器的
+   特定 Windows 版本上）。 "USE_STACKCHECK" 将被自动定义；你绝不应该在
+   你自己的代码中改变此定义。
+
+typedef void (*PyOS_sighandler_t)(int)
+    * 属于 稳定 ABI.*
+
+PyOS_sighandler_t PyOS_getsig(int i)
+    * 属于 稳定 ABI.*
+
+   返回信号 *i* 当前的信号处理器。 这是一个对 "sigaction()" 或
+   "signal()" 的简单包装器。 请不要直接调用这两个函数！
+
+PyOS_sighandler_t PyOS_setsig(int i, PyOS_sighandler_t h)
+    * 属于 稳定 ABI.*
+
+   将信号 *i* 的信号处理器设为 *h*；返回原来的信号处理器。 这是一个对
+   "sigaction()" 或 "signal()" 的简单包装器。 请不要直接调用这两个函数
+   ！
+
+wchar_t *Py_DecodeLocale(const char *arg, size_t *size)
+    * 属于 稳定 ABI 自 3.7 版起.*
+
+   警告:
+
+     此函数不应当被直接调用：请使用 "PyConfig" API 以及可确保 对
+     Python 进行预初始化 的  "PyConfig_SetBytesString()" 函数。此函数
+     不可在This function must not be called before 对 Python 进行预初
+     始化 之前被调用以便正确地配置 LC_CTYPE 语言区域：请参阅
+     "Py_PreInitialize()" 函数。
+
+   使用 *filesystem encoding and error handler* 来解码一个字节串。 如
+   果错误处理器为 surrogateescape 错误处理器，则不可解码的字节将被解码
+   为 U+DC80..U+DCFF 范围内的字符；而如果一个字节序列可被解码为代理字
+   符，则其中的字节会使用 surrogateescape 错误处理器来转义而不是解码它
+   们。
+
+   返回一个指向新分配的由宽字符组成的字符串的指针，使用
+   "PyMem_RawFree()" 来释放内存。 如果 size 不为 "NULL"，则将排除了
+   null 字符的宽字符数量写入到 "*size"
+
+   在解码错误或内存分配错误时返回 "NULL"。 如果 *size* 不为 "NULL"，则
+   "*size" 将在内存错误时设为 "(size_t)-1" 或在解码错误时设为
+   "(size_t)-2"。
+
+   *filesystem encoding and error handler* 是由 "PyConfig_Read()" 来选
+   择的: 参见 "PyConfig" 的 "filesystem_encoding" 和
+   "filesystem_errors" 等成员。
+
+   解码错误绝对不应当发生，除非 C 库有程序缺陷。
+
+   请使用 "Py_EncodeLocale()" 函数来将字符串编码回字节串。
+
+   参见:
+
+     "PyUnicode_DecodeFSDefaultAndSize()" 和
+     "PyUnicode_DecodeLocaleAndSize()" 函数。
+
+   Added in version 3.5.
+
+   在 3.7 版本发生变更: 现在此函数在 Python UTF-8 模式 下将使用 UTF-8
+   编码格式。
+
+   在 3.8 版本发生变更: 现在如果在 Windows 上
+   "PyPreConfig.legacy_windows_fs_encoding" 为零则此函数将使用 UTF-8
+   编码格式；
+
+char *Py_EncodeLocale(const wchar_t *text, size_t *error_pos)
+    * 属于 稳定 ABI 自 3.7 版起.*
+
+   将一个由宽字符组成的字符串编码为 *filesystem encoding and error
+   handler*。 如果错误处理器为 surrogateescape 错误处理器，则在
+   U+DC80..U+DCFF 范围内的代理字符会被转换为字节值 0x80..0xFF。
+
+   返回一个指向新分配的字节串的指针，使用 "PyMem_Free()" 来释放内存。
+   当发生编码错误或内存分配错误时返回 "NULL"。
+
+   如果 error_pos 不为 "NULL"，则成功时会将 "*error_pos" 设为
+   "(size_t)-1"，或是在发生编码错误时设为无效字符的索引号。
+
+   *filesystem encoding and error handler* 是由 "PyConfig_Read()" 来选
+   择的: 参见 "PyConfig" 的 "filesystem_encoding" 和
+   "filesystem_errors" 等成员。
+
+   请使用 "Py_DecodeLocale()" 函数来将字节串解码回由宽字符组成的字符串
+   。
+
+   警告:
+
+     此函数不可在This function must not be called before 对 Python 进
+     行预初始化 之前被调用以便正确地配置 LC_CTYPE 语言区域：请参阅
+     "Py_PreInitialize()" 函数。
+
+   参见: "PyUnicode_EncodeFSDefault()" 和 "PyUnicode_EncodeLocale()" 函数
+       。
+
+   Added in version 3.5.
+
+   在 3.7 版本发生变更: 现在此函数在 Python UTF-8 模式 下将使用 UTF-8
+   编码格式。
+
+   在 3.8 版本发生变更: 现在如果在 Windows 上
+   "PyPreConfig.legacy_windows_fs_encoding" 为零则此函数将使用 UTF-8
+   编码格式。
+
+
+系统功能
+********
+
+这些是使来自 "sys" 模块的功能可以让 C 代码访问的工具函数。 它们都可用
+于当前解释器线程的 "sys" 模块的字典，该字典包含在内部线程状态结构体中
+。
+
+PyObject *PySys_GetObject(const char *name)
+    *返回值：借入的引用。** 属于 稳定 ABI.*
+
+   返回来自 "sys" 模块的对象 *name* 或者如果它不存在则返回 "NULL"，并
+   且不会设置异常。
+
+int PySys_SetObject(const char *name, PyObject *v)
+    * 属于 稳定 ABI.*
+
+   将 "sys" 模块中的 *name* 设为 *v* 除非 *v* 为 "NULL"，在此情况下
+   *name* 将从 sys 模块中被删除。 成功时返回 "0"，发生错误时返回 "-1"
+   。
+
+void PySys_ResetWarnOptions()
+    * 属于 稳定 ABI.*
+
+   将 "sys.warnoptions" 重置为空列表。 此函数可在 "Py_Initialize()" 之
+   前被调用。
+
+void PySys_AddWarnOption(const wchar_t *s)
+    * 属于 稳定 ABI.*
+
+   This API is kept for backward compatibility: setting
+   "PyConfig.warnoptions" should be used instead, see Python
+   Initialization Configuration.
+
+   Append *s* to "sys.warnoptions". This function must be called prior
+   to "Py_Initialize()" in order to affect the warnings filter list.
+
+   自 3.11 版本弃用.
+
+void PySys_AddWarnOptionUnicode(PyObject *unicode)
+    * 属于 稳定 ABI.*
+
+   This API is kept for backward compatibility: setting
+   "PyConfig.warnoptions" should be used instead, see Python
+   Initialization Configuration.
+
+   Append *unicode* to "sys.warnoptions".
+
+   Note: this function is not currently usable from outside the
+   CPython implementation, as it must be called prior to the implicit
+   import of "warnings" in "Py_Initialize()" to be effective, but
+   can't be called until enough of the runtime has been initialized to
+   permit the creation of Unicode objects.
+
+   自 3.11 版本弃用.
+
+void PySys_SetPath(const wchar_t *path)
+    * 属于 稳定 ABI.*
+
+   This API is kept for backward compatibility: setting
+   "PyConfig.module_search_paths" and
+   "PyConfig.module_search_paths_set" should be used instead, see
+   Python Initialization Configuration.
+
+   Set "sys.path" to a list object of paths found in *path* which
+   should be a list of paths separated with the platform's search path
+   delimiter (":" on Unix, ";" on Windows).
+
+   自 3.11 版本弃用.
+
+void PySys_WriteStdout(const char *format, ...)
+    * 属于 稳定 ABI.*
+
+   将以 *format* 描述的输出字符串写入到 "sys.stdout"。 不会引发任何异
+   常，即使发生了截断（见下文）。
+
+   *format* 应当将已格式化的输出字符串的总大小限制在 1000 字节以下 --
+   超过 1000 字节后，输出字符串会被截断。 特别地，这意味着不应出现不受
+   限制的 "%s" 格式；它们应当使用 "%.<N>s" 来限制，其中 <N> 是一个经计
+   算使得 <N> 与其他已格式化文本的最大尺寸之和不会超过 1000 字节的十进
+   制数字。 还要注意 "%f"，它可能为非常大的数字打印出数以百计的数位。
+
+   如果发生了错误，"sys.stdout" 会被清空，已格式化的消息将被写入到真正
+   的 (C 层级) *stdout*。
+
+void PySys_WriteStderr(const char *format, ...)
+    * 属于 稳定 ABI.*
+
+   类似 "PySys_WriteStdout()"，但改为写入到 "sys.stderr" 或 *stderr*。
+
+void PySys_FormatStdout(const char *format, ...)
+    * 属于 稳定 ABI.*
+
+   类似 PySys_WriteStdout() 的函数将会使用 "PyUnicode_FromFormatV()"
+   来格式化消息并且不会将消息截短至任意长度。
+
+   Added in version 3.2.
+
+void PySys_FormatStderr(const char *format, ...)
+    * 属于 稳定 ABI.*
+
+   类似 "PySys_FormatStdout()"，但改为写入到 "sys.stderr" 或 *stderr*
+   。
+
+   Added in version 3.2.
+
+void PySys_AddXOption(const wchar_t *s)
+    * 属于 稳定 ABI 自 3.7 版起.*
+
+   This API is kept for backward compatibility: setting
+   "PyConfig.xoptions" should be used instead, see Python
+   Initialization Configuration.
+
+   Parse *s* as a set of "-X" options and add them to the current
+   options mapping as returned by "PySys_GetXOptions()". This function
+   may be called prior to "Py_Initialize()".
+
+   Added in version 3.2.
+
+   自 3.11 版本弃用.
+
+PyObject *PySys_GetXOptions()
+    *返回值：借入的引用。** 属于 稳定 ABI 自 3.7 版起.*
+
+   返回当前 "-X" 选项的字典，类似于 "sys._xoptions"。 发生错误时，将返
+   回 "NULL" 并设置一个异常。
+
+   Added in version 3.2.
+
+int PySys_Audit(const char *event, const char *format, ...)
+
+   引发一个审计事件并附带任何激活的钩子。 成功时返回零值或在失败时返回
+   非零值并设置一个异常。
+
+   If any hooks have been added, *format* and other arguments will be
+   used to construct a tuple to pass. Apart from "N", the same format
+   characters as used in "Py_BuildValue()" are available. If the built
+   value is not a tuple, it will be added into a single-element tuple.
+   (The "N" format option consumes a reference, but since there is no
+   way to know whether arguments to this function will be consumed,
+   using it may cause reference leaks.)
+
+   请注意 "#" 格式字符应当总是被当作 "Py_ssize_t" 来处理，无论是否定义
+   了 "PY_SSIZE_T_CLEAN"。
+
+   "sys.audit()" 会执行与来自 Python 代码的函数相同的操作。
+
+   Added in version 3.8.
+
+   在 3.8.2 版本发生变更: 要求 "Py_ssize_t" 用于 "#" 格式字符。 在此之
+   前，会引发一个不可避免的弃用警告。
+
+int PySys_AddAuditHook(Py_AuditHookFunction hook, void *userData)
+
+   将可调用对象 *hook* 添加到激活的审计钩子列表。 在成功时返回零而在失
+   败时返回非零值。 如果运行时已经被初始化，还会在失败时设置一个错误。
+   通过此 API 添加的钩子会针对在运行时创建的所有解释器被调用。
+
+   *userData* 指针会被传入钩子函数。 因于钩子函数可能由不同的运行时调
+   用，该指针不应直接指向 Python 状态。
+
+   此函数可在 "Py_Initialize()" 之前被安全地调用。 如果在运行时初始化
+   之后被调用，现有的审计钩子将得到通知并可能通过引发一个从
+   "Exception" 子类化的错误静默地放弃操作（其他错误将不会被静默）。
+
+   钩子函数总是会由引发异常的 Python 解释器在持有 GIL 的情况下调用。
+
+   请参阅 **PEP 578** 了解有关审计的详细描述。 在运行时和标准库中会引
+   发审计事件的函数清单见 审计事件表。 更多细节见每个函数的文档。
+
+   如果解释器已被初始化，此函数将引发一个审计事件 "sys.addaudithook"
+   且不附带任何参数。 如果有任何现存的钩子引发了一个派生自 "Exception"
+   的异常，新的钩子将不会被添加且该异常会被清除。 因此，调用方不可假定
+   他们的钩子已被添加除非他们能控制所有现存的钩子。
+
+   typedef int (*Py_AuditHookFunction)(const char *event, PyObject *args, void *userData)
+
+      The type of the hook function. *event* is the C string event
+      argument passed to "PySys_Audit()". *args* is guaranteed to be a
+      "PyTupleObject". *userData* is the argument passed to
+      PySys_AddAuditHook().
+
+   Added in version 3.8.
+
+
+过程控制
+********
+
+void Py_FatalError(const char *message)
+    * 属于 稳定 ABI.*
+
+   打印一个致命错误消息并杀死进程。 不会执行任何清理。 此函数应当仅在
+   检测到可能令继续使用 Python 解释器会有危险的情况时被发起调用；例如
+   对象管理已被破坏的时候。 在 Unix 上，会调用标准 C 库函数 "abort()"
+   并将由它来尝试生成一个 "core" 文件。
+
+   The "Py_FatalError()" function is replaced with a macro which logs
+   automatically the name of the current function, unless the
+   "Py_LIMITED_API" macro is defined.
+
+   在 3.9 版本发生变更: 自动记录函数名称。
+
+void Py_Exit(int status)
+    * 属于 稳定 ABI.*
+
+   退出当前进程。 这将调用 "Py_FinalizeEx()" 然后再调用标准 C 库函数
+   "exit(status)"。 如果 "Py_FinalizeEx()" 提示错误，退出状态将被设为
+   120。
+
+   在 3.6 版本发生变更: 来自最终化的错误不会再被忽略。
+
+int Py_AtExit(void (*func)())
+    * 属于 稳定 ABI.*
+
+   注册一个由 "Py_FinalizeEx()" 调用的清理函数。 调用清理函数将不传入
+   任何参数且不应返回任何值。 最多可以注册32 个清理函数。 当注册成功时
+   ，"Py_AtExit()" 将返回 "0"；失败时，它将返回 "-1"。 最后注册的清理
+   函数会最先被调用。 每个清理函数将至多被调用一次。 由于 Python 的内
+   部最终化将在清理函数之前完成，因此 Python API 不应被 *func* 调用。

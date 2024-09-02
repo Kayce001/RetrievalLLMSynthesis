@@ -1,0 +1,270 @@
+导入模块
+********
+
+PyObject *PyImport_ImportModule(const char *name)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   这是一个对 "PyImport_Import()" 的包装器，它接受一个 const char* 作
+   为参数而不是 PyObject*。
+
+PyObject *PyImport_ImportModuleNoBlock(const char *name)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   该函数是 "PyImport_ImportModule()" 的一个被遗弃的别名。
+
+   在 3.3 版本发生变更: 在导入锁被另一线程掌控时此函数会立即失败。 但
+   是从 Python 3.3 起，锁方案在大多数情况下都已切换为针对每个模块加锁
+   ，所以此函数的特殊行为已无必要。
+
+PyObject *PyImport_ImportModuleEx(const char *name, PyObject *globals, PyObject *locals, PyObject *fromlist)
+    *返回值：新的引用。*
+
+   导入一个模块。 请参阅内置 Python 函数 "__import__()" 获取完善的相关
+   描述。
+
+   返回值是一个对所导入模块或最高层级包的新引用，或是在导入失败时则为
+   "NULL" 并设置一个异常。 与 "__import__()" 类似，当请求一个包的子模
+   块时返回值通常为该最高层级包，除非给出了一个非空的 *fromlist*。
+
+   导入失败将移动不完整的模块对象，就像 "PyImport_ImportModule()" 那样
+   。
+
+PyObject *PyImport_ImportModuleLevelObject(PyObject *name, PyObject *globals, PyObject *locals, PyObject *fromlist, int level)
+    *返回值：新的引用。** 属于 稳定 ABI 自 3.7 版起.*
+
+   导入一个模块。 关于此函数的最佳说明请参考内置 Python 函数
+   "__import__()"，因为标准 "__import__()" 函数会直接调用此函数。
+
+   返回值是一个对所导入模块或最高层级包的新引用，或是在导入失败时则为
+   "NULL" 并设置一个异常。 与 "__import__()" 类似，当请求一个包的子模
+   块时返回值通常为该最高层级包，除非给出了一个非空的 *fromlist*。
+
+   Added in version 3.3.
+
+PyObject *PyImport_ImportModuleLevel(const char *name, PyObject *globals, PyObject *locals, PyObject *fromlist, int level)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   类似于 "PyImport_ImportModuleLevelObject()"，但其名称为 UTF-8 编码
+   的字符串而不是 Unicode 对象。
+
+   在 3.3 版本发生变更: 不再接受 *level* 为负数值。
+
+PyObject *PyImport_Import(PyObject *name)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   这是一个调用了当前“导入钩子函数”的更高层级接口（显式指定 *level* 为
+   0，表示绝对导入）。 它将发起调用当前全局作用域下 "__builtins__" 中
+   的 "__import__()" 函数。 这意味着将使用当前环境下安装的任何导入钩子
+   来完成导入。
+
+   该函数总是使用绝对路径导入。
+
+PyObject *PyImport_ReloadModule(PyObject *m)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   重载一个模块。 返回一个指向被重载模块的新引用，或者在失败时返回
+   "NULL" 并设置一个异常（在此情况下模块仍然会存在）。
+
+PyObject *PyImport_AddModuleObject(PyObject *name)
+    *返回值：借入的引用。** 属于 稳定 ABI 自 3.7 版起.*
+
+   Return the module object corresponding to a module name.  The
+   *name* argument may be of the form "package.module". First check
+   the modules dictionary if there's one there, and if not, create a
+   new one and insert it in the modules dictionary. Return "NULL" with
+   an exception set on failure.
+
+   备注:
+
+     This function does not load or import the module; if the module
+     wasn't already loaded, you will get an empty module object. Use
+     "PyImport_ImportModule()" or one of its variants to import a
+     module.  Package structures implied by a dotted name for *name*
+     are not created if not already present.
+
+   Added in version 3.3.
+
+PyObject *PyImport_AddModule(const char *name)
+    *返回值：借入的引用。** 属于 稳定 ABI.*
+
+   Similar to "PyImport_AddModuleObject()", but the name is a UTF-8
+   encoded string instead of a Unicode object.
+
+PyObject *PyImport_ExecCodeModule(const char *name, PyObject *co)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   给定一个模块名称（可能为 "package.module" 形式）和一个从 Python 字
+   节码文件读取或从内置函数 "compile()" 获取的代码对象，加载该模块。
+   返回对该模块对象的新引用，或者如果发生错误则返回 "NULL" 并设置一个
+   异常。 在发生错误的情况下 *name* 会从 "sys.modules" 中被移除，即使
+   *name* 在进入 "PyImport_ExecCodeModule()" 时已存在于 "sys.modules"
+   中。 在 "sys.modules" 中保留未完全初始化的模块是危险的，因为导入这
+   样的模块没有办法知识模块对象是否处于一种未知的（对于模块作者的意图
+   来说可能是已损坏的）状态。
+
+   模块的 "__spec__" 和 "__loader__" 如果尚未设置的话，将被设为适当的
+   值。  相应 spec 的加载器（如果已设置）将被设为模块的 "__loader__"
+   而在其他情况下将被设为 "SourceFileLoader" 的实例。
+
+   模块的 "__file__" 属性将被设为代码对象的 "co_filename"。 如果适用，
+   还将设置 "__cached__"。
+
+   如果模块已被导入则此函数将重载它。 请参阅 "PyImport_ReloadModule()"
+   了解重载模块的预定方式。
+
+   如果 *name* 指向一个形式为 "package.module" 的带点号的名称，则任何
+   尚未创建的包结构仍然不会被创建。
+
+   另请参阅 "PyImport_ExecCodeModuleEx()" 和
+   "PyImport_ExecCodeModuleWithPathnames()"。
+
+   在 3.12 版本发生变更: "__cached__" 和 "__loader__" 的设置已被弃用。
+   替代设置参见 "ModuleSpec"。
+
+PyObject *PyImport_ExecCodeModuleEx(const char *name, PyObject *co, const char *pathname)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   类似于 "PyImport_ExecCodeModule()"，但如果 *pathname* 不为 "NULL"
+   则会被设为模块对象的 "__file__" 属性的值。
+
+   参见 "PyImport_ExecCodeModuleWithPathnames()"。
+
+PyObject *PyImport_ExecCodeModuleObject(PyObject *name, PyObject *co, PyObject *pathname, PyObject *cpathname)
+    *返回值：新的引用。** 属于 稳定 ABI 自 3.7 版起.*
+
+   类似于 "PyImport_ExecCodeModuleEx()"，但如果 *cpathname* 不为
+   "NULL" 则会被设为模块对象的 "__cached__" 值。 在三个函数中，这是推
+   荐使用的一个。
+
+   Added in version 3.3.
+
+   在 3.12 版本发生变更: "__cached__" 的设置已被弃用。 替代设置参见
+   "ModuleSpec"。
+
+PyObject *PyImport_ExecCodeModuleWithPathnames(const char *name, PyObject *co, const char *pathname, const char *cpathname)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   类似于 "PyImport_ExecCodeModuleObject()"，但 *name*, *pathname* 和
+   *cpathname* 为 UTF-8 编码的字符串。如果 *pathname* 也被设为 "NULL"
+   则还会尝试根据 *cpathname* 推断出前者的值。
+
+   Added in version 3.2.
+
+   在 3.3 版本发生变更: 如果只提供了字节码路径则会使用
+   "imp.source_from_cache()" 来计算源路径。
+
+   在 3.12 版本发生变更: 不再使用已移除的 "imp" 模块。
+
+long PyImport_GetMagicNumber()
+    * 属于 稳定 ABI.*
+
+   返回 Python 字节码文件（即 ".pyc" 文件）的魔数。 此魔数应当存在于字
+   节码文件的开头四个字节中，按照小端字节序。 出错时返回 "-1"。
+
+   在 3.3 版本发生变更: 失败时返回值 "-1"。
+
+const char *PyImport_GetMagicTag()
+    * 属于 稳定 ABI.*
+
+   针对 **PEP 3147** 格式的 Python 字节码文件名返回魔术标签字符串。 请
+   记住在 "sys.implementation.cache_tag" 上的值是应当被用来代替此函数
+   的更权威的值。
+
+   Added in version 3.2.
+
+PyObject *PyImport_GetModuleDict()
+    *返回值：借入的引用。** 属于 稳定 ABI.*
+
+   返回用于模块管理的字典 (即 "sys.modules")。 请注意这是针对每个解释
+   器的变量。
+
+PyObject *PyImport_GetModule(PyObject *name)
+    *返回值：新的引用。** 属于 稳定 ABI 自 3.8 版起.*
+
+   返回给定名称的已导入模块。 如果模块尚未导入则返回 "NULL" 但不会设置
+   错误。 如果查找失败则返回 "NULL" 并设置错误。
+
+   Added in version 3.7.
+
+PyObject *PyImport_GetImporter(PyObject *path)
+    *返回值：新的引用。** 属于 稳定 ABI.*
+
+   返回针对一个 "sys.path"/"pkg.__path__" 中条目 *path* 的查找器对象，
+   可能会从 "sys.path_importer_cache" 字典中获取。 如果它尚未被缓存，
+   则会遍历 "sys.path_hooks" 直至找到一个能处理该路径条目的钩子。 如果
+   没有可用的钩子则返回 "None"；这将告知调用方 *path based finder* 无
+   法为该路径条目找到查找器。 结果将缓存到 "sys.path_importer_cache"
+   中。 返回一个指向查找器对象的新引用。
+
+int PyImport_ImportFrozenModuleObject(PyObject *name)
+    * 属于 稳定 ABI 自 3.7 版起.*
+
+   加载名称为 *name* 的已冻结模块。 成功时返回 "1"，如果未找到模块则返
+   回 "0"，如果初始化失败则返回 "-1" 并设置一个异常。 要在加载成功后访
+   问被导入的模块，请使用 "PyImport_ImportModule()"。 （请注意此名称有
+   误导性 --- 如果模块已被导入此函数将重载它。）
+
+   Added in version 3.3.
+
+   在 3.4 版本发生变更: "__file__" 属性将不再在模块上设置。
+
+int PyImport_ImportFrozenModule(const char *name)
+    * 属于 稳定 ABI.*
+
+   类似于 "PyImport_ImportFrozenModuleObject()"，但其名称为 UTF-8 编码
+   的字符串而不是 Unicode 对象。
+
+struct _frozen
+
+   这是针对已冻结模块描述器的结构类型定义，与由 **freeze** 工具所生成
+   的一致 (请参看 Python 源代码发行版中的 "Tools/freeze/")。 其定义可
+   在 "Include/import.h" 中找到:
+
+      struct _frozen {
+          const char *name;
+          const unsigned char *code;
+          int size;
+          bool is_package;
+      };
+
+   在 3.11 版本发生变更: 新的 "is_package" 字段指明模块是否为一个包。
+   这替代了将 "size" 设为负值的做法。
+
+const struct _frozen *PyImport_FrozenModules
+
+   该指针被初始化为指向一个 "_frozen" 记录的数组，以一个所有成员均为
+   "NULL" 或零的记录表示结束。 当一个冻结模块被导入时，它将在此表中被
+   搜索。 第三方代码可以利用此方式来提供动态创建的冻结模块集。
+
+int PyImport_AppendInittab(const char *name, PyObject *(*initfunc)(void))
+    * 属于 稳定 ABI.*
+
+   向现有的内置模块表添加一个模块。 这是对 "PyImport_ExtendInittab()"
+   的便捷包装，如果无法扩展表则返回 "-1"。 新的模块可使用名称 *name*
+   来导入，并使用函数 *initfunc* 作为在第一次尝试导入时调用的初始化函
+   数。 此函数应当在 "Py_Initialize()" 之前调用。
+
+struct _inittab
+
+   描述内置模块列表中一个单独条目的结构体。 嵌入 Python 的程序可以将这
+   些结构体的数组与 "PyImport_ExtendInittab()" 结合使用以提供额外的内
+   置模块。 该结构体由两个成员组成:
+
+   const char *name
+
+      模块名称，为一个 ASCII 编码的字符串。
+
+   PyObject *(*initfunc)(void)
+
+      针对内置于解释器的模块的初始化函数。
+
+int PyImport_ExtendInittab(struct _inittab *newtab)
+
+   向内置模块表添加一组模块。 *newtab* 数组必须以一个包含 "NULL" 作为
+   "name" 字段的哨兵条目结束；未提供哨兵值可能导致内存错误。 成功时返
+   回 "0" 或者如果无法分配足够内存来扩展内部表则返回 "-1"。 当失败时，
+   将不会向内部表添加任何模块。 该函数必须在 "Py_Initialize()" 之前调
+   用。
+
+   如果 Python 要被多次初始化，则 "PyImport_AppendInittab()" 或
+   "PyImport_ExtendInittab()" 必须在每次 Python 初始化之前调用。
