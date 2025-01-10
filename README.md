@@ -19,3 +19,6 @@ conda create -n rag_env python=3.8
 conda activate rag_env
 
 pip install -r requirements.txt
+
+
+rag作用：1、可以将原本较难阅读的内容让大模型重新整理、讲解，变成容易阅读的格式。
